@@ -1,0 +1,11 @@
+[package]
+name = "druid-chat-proof-of-concept"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+druid = { git = "https://github.com/linebender/druid.git", features = ["svg"] }
+usvg = { version = "0.14.1" }
+tracing = { version = "0.1.22" }
