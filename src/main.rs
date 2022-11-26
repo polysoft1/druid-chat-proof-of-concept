@@ -18,12 +18,26 @@ fn build_ui() -> impl Widget<AppState> {
             widget::SvgData::default()
         }
     };
+    let settings_svg = match include_str!("./assets/settings_gear.svg").parse::<widget::SvgData>() {
+        Ok(svg) => svg,
+        Err(err) => {
+            error!("{}", err);
+            error!("Using an empty SVG instead.");
+            widget::SvgData::default()
+        }
+    };
 
-    let title = widget::Label::new("Chat Title")
-        .with_line_break_mode(widget::LineBreaking::WordWrap)
-        .padding(5.0)
-        .background(druid::theme::BACKGROUND_LIGHT)
-        .expand_width();
+    let title = widget::Flex::row()
+        .with_flex_child(
+            widget::Label::new("Chat Title")
+            .with_line_break_mode(widget::LineBreaking::WordWrap)
+            .padding(7.0)
+            .expand_width(),
+        1.0)
+        .with_child(
+            widget::Svg::new(settings_svg).fix_height(15.0).padding(7.0)
+        )
+        .background(druid::theme::BACKGROUND_LIGHT);
 
     let editor = widget::Flex::row()
         .with_flex_child(
