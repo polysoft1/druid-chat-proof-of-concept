@@ -19,31 +19,36 @@ fn build_ui() -> impl Widget<AppState> {
         }
     };
 
+    let title = widget::Label::new("Chat Title")
+        .with_line_break_mode(widget::LineBreaking::WordWrap)
+        .padding(5.0)
+        .background(druid::theme::BACKGROUND_LIGHT)
+        .expand_width();
+
+    let editor = widget::Flex::row()
+        .with_flex_child(
+            widget::TextBox::multiline()
+                .with_placeholder("Message...")
+                .lens(AppState::text_edit)
+                .padding(1.0)
+                .expand_width(),
+        1.0)
+        .with_child(
+            widget::Svg::new(send_svg).fix_height(25.0).padding(5.0)
+        );
+
     widget::Flex::column()
         // Title
         .with_child(
-            widget::Label::new("Chat Title")
-                .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .padding(5.0)
-                .background(druid::theme::BACKGROUND_LIGHT)
-                .expand_width()
+            title
         )
         // The timeline itself
         .with_flex_spacer(1.0)
         // The bottom editor
         .with_child(
-            widget::Flex::row()
-                .with_flex_child(
-                    widget::TextBox::multiline()
-                        .with_placeholder("Message...")
-                        .lens(AppState::text_edit)
-                        .padding(1.0)
-                        .expand_width(),
-                1.0)
-                .with_child(
-                    widget::Svg::new(send_svg).fix_height(25.0).padding(5.0)
-                )
+            editor
         )
+        .must_fill_main_axis(true)
     }
 
 fn main() -> Result<(), PlatformError> {
@@ -54,7 +59,7 @@ fn main() -> Result<(), PlatformError> {
     AppLauncher::with_window(
         WindowDesc::new(
             build_ui()
-        )
+        ).window_size((300.0, 450.0))
     ).launch(
         initial_state
     )?;
