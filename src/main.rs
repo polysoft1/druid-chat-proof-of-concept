@@ -9,7 +9,7 @@ use tracing::error;
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
     text_edit: sync::Arc<String>,
-    timeline_data: im::Vector<u32>,
+    timeline_data: im::Vector<String>,
 }
 
 fn build_ui() -> impl Widget<AppState> {
@@ -56,7 +56,8 @@ fn build_ui() -> impl Widget<AppState> {
 
     let timeline = widget::Scroll::new(
         widget::List::new( || {
-            widget::Label::new(|item: &u32, _env: &_| format!("List item #{}", item))
+            widget::Label::new(|item: &String, _env: &_| item.clone())
+                .with_line_break_mode(widget::LineBreaking::WordWrap)
                 .padding(10.0)
                 .background(Color::rgb8(75, 75, 76))
                 .rounded(10.0)
@@ -84,10 +85,20 @@ fn build_ui() -> impl Widget<AppState> {
 
 fn main() -> Result<(), PlatformError> {
     // create the initial app state
-    let initial_state = AppState {
+    let mut initial_state = AppState {
         text_edit: "".to_string().into(),
-        timeline_data: im::vector![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        timeline_data: im::vector!["test".to_string()],
     };
+
+    let mut msg_body = String::new();
+    msg_body.push_str("Start of msg.");
+
+    for _ in 1..40 {
+        msg_body.push_str(" Appended!");
+        initial_state.timeline_data.push_back(msg_body.clone());
+    }
+    initial_state.timeline_data.push_back("This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string());
+
     AppLauncher::with_window(
         WindowDesc::new(
             build_ui()
