@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-druid = { git = "https://github.com/linebender/druid.git", features = ["svg", "im"] }
+druid = { git = "https://github.com/linebender/druid.git", features = ["svg", "im", "image", "png"] }
+piet-common = { git = "https://github.com/linebender/piet.git" }
 usvg = { version = "0.14.1" }
 tracing = { version = "0.1.22" }
+rand = "0.8"
