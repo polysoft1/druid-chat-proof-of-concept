@@ -1,5 +1,6 @@
+use druid::kurbo::Circle;
 use druid::widget::prelude::*;
-use druid::{Widget, WidgetExt, widget};
+use druid::{Widget, WidgetExt, widget, ImageBuf};
 use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
@@ -10,13 +11,13 @@ pub struct TimelineItemWidget {
     label: WidgetPod<Message, widget::Container<Message>>,
 }
 
-const PROFILE_PIC_WIDTH: f64 = 40.0;
-const PROFILE_PIC_SPACING: f64 = 2.0;
+const PROFILE_PIC_WIDTH: f64 = 30.0;
+const PROFILE_PIC_SPACING: f64 = 3.5;
 const PROFILE_PIC_AREA: f64 = PROFILE_PIC_WIDTH + PROFILE_PIC_SPACING;
 const MSG_COLOR: Color = Color::rgb8(75, 75, 76);
-const ARROW_SIZE: f64 = 8.0;
+const ARROW_SIZE: f64 = 7.0;
 const ARROW_X: f64 = PROFILE_PIC_AREA;
-const CURVE_PATH: bool = true;
+const CURVE_PATH: bool = false;
 
 fn make_arrow_path() -> kurbo::BezPath {
     let mut path = kurbo::BezPath::new();
@@ -31,8 +32,8 @@ fn make_arrow_path() -> kurbo::BezPath {
     } else {
         path.line_to(Point::new(ARROW_X, ARROW_SIZE));            
     }
-    path.line_to(Point::new(ARROW_X + ARROW_SIZE, 0.0));            
-    // To right to cover the curve of the bubble
+    // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
+    path.line_to(Point::new(ARROW_X + ARROW_SIZE * 2.0, 0.0));
     path.line_to(Point::new(ARROW_X, 0.0));
     path.close_path();
     path
@@ -40,16 +41,11 @@ fn make_arrow_path() -> kurbo::BezPath {
 
 impl TimelineItemWidget {
     pub fn new() -> Self {
-        // Loads the image
-        // TODO: Make it so that all pics for the same user use the same ImageBuf
-        //let filename = format!("./user_{}.webp", |item: &Message, _env: &_| item.user_id);
-
-        // This needs image and png features enabled
         let label = WidgetPod::new(widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
                 .padding(10.0)
                 .background(MSG_COLOR)
-                .rounded(10.0));
+                .rounded(7.0));
         Self {
             label: label,
         }
@@ -93,6 +89,8 @@ impl Widget<Message> for TimelineItemWidget {
 
         let label_size = self.label.layout(_layout_ctx, &label_bounding_box, _data, _env);        
         
+        // The image is at the top left if other, or top right if self (if shown)
+        // Potential future support for bottom images
         Size::new(bc.max().width, label_size.height)
     }
 
@@ -114,10 +112,13 @@ impl Widget<Message> for TimelineItemWidget {
             let image_data = data.profile_pic.clone();
             image_data.to_image(ctx.render_ctx)
         };
-        ctx.draw_image(&piet_image, 
-            druid::Rect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH),
-             druid::piet::InterpolationMode::Bilinear
-        );
+        ctx.with_save(|ctx| {
+                ctx.clip(Circle::new(Point::new(PROFILE_PIC_WIDTH / 2.0, PROFILE_PIC_WIDTH / 2.0), PROFILE_PIC_WIDTH / 2.0));
+                ctx.draw_image(&piet_image, 
+                    druid::Rect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH),
+                     druid::piet::InterpolationMode::Bilinear
+                );
+            });
         // Now the little arrow that goes from the image to the bubble
         ctx.fill(make_arrow_path(), &MSG_COLOR);
     }
