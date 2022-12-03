@@ -1,9 +1,10 @@
 use druid::kurbo::{Circle, RoundedRect};
 use druid::widget::prelude::*;
-use druid::{Widget, WidgetExt, widget};
+use druid::{Widget, WidgetExt, widget, WindowHandle};
 use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
+use druid::Screen;
 
 use crate::Message;
 
@@ -90,6 +91,20 @@ impl TimelineItemWidget {
                 .rounded(7.0));
         Self {
             label: label,
+        }
+    }
+
+    pub fn get_required_icon_resolution(window: &WindowHandle) -> f64 {
+        let scale_request = window.get_scale();
+        match scale_request {
+            Ok(scale) => {
+                println!("Scale_Y: {}", scale.y());
+                scale.x() * PROFILE_PIC_WIDTH
+            },
+            Err(e) => {
+                eprintln!("Error getting scale: {}", e);
+                return PROFILE_PIC_WIDTH;
+            }
         }
     }
 }

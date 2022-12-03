@@ -1,14 +1,17 @@
-use druid::{AppLauncher, WindowDesc, Widget, PlatformError, WidgetExt, ImageBuf};
+use druid::{AppLauncher, WindowDesc, Widget, PlatformError, WidgetExt, ImageBuf, AppDelegate, WindowId, WindowHandle};
 use druid::widget;
 use druid::im;
 use druid;
 use std::sync;
-use tracing::error;
+use tracing::{error, Instrument};
 use rand::Rng;
 use std::path::Path;
+use core::time::Duration;
 
 mod widgets;
 use widgets::timeline_item;
+
+use crate::widgets::timeline_item::TimelineItemWidget;
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
@@ -21,6 +24,59 @@ struct Message {
     user_id: u32,
     profile_pic: ImageBuf,
     message: String,
+}
+
+struct Delegate {
+    main_window_id: WindowId,
+}
+
+impl AppDelegate<AppState> for Delegate {
+    fn event(
+        &mut self,
+        _ctx: &mut druid::DelegateCtx,
+        _window_id: druid::WindowId,
+        event: druid::Event,
+        _data: &mut AppState,
+        _env: &druid::Env,
+    ) -> Option<druid::Event> {
+        Some(event)
+    }
+
+    fn command(
+        &mut self,
+        _ctx: &mut druid::DelegateCtx,
+        _target: druid::Target,
+        _cmd: &druid::Command,
+        _data: &mut AppState,
+        _env: &druid::Env,
+    ) -> druid::Handled {
+        druid::Handled::No
+    }
+
+    fn window_added(
+        &mut self,
+        id: druid::WindowId,
+        handle: druid::WindowHandle,
+        _data: &mut AppState,
+        _env: &druid::Env,
+        _ctx: &mut druid::DelegateCtx,
+    ) {
+        if id == self.main_window_id {
+            println!("Main Window Added");
+            println!("PX Required: {}", timeline_item::TimelineItemWidget::get_required_icon_resolution(&handle));
+        } else {
+            println!("Other Window Added");
+        }
+    }
+
+    fn window_removed(&mut self, id: druid::WindowId, _data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
+        if id == self.main_window_id {
+            println!("Main Window Removed");
+
+        } else {
+            println!("Other Window Removed");
+        }
+    }
 }
 
 fn build_ui() -> impl Widget<AppState> {
@@ -101,10 +157,12 @@ fn main() -> Result<(), PlatformError> {
     let mut msg_body = String::new();
     msg_body.push_str("Start of msg.");
 
+    // Find required image resolution to not cause blurry profile pics
+
     // Load profile pics
     let mut profile_pic_buffers: Vec<ImageBuf> = Vec::new();
     for i in 1..6 {
-        let filename = format!("./images/user_{}.png", i);
+        let filename = format!("./images/user_{}_55px.png", i);
         let profile_pic_file = Path::new(filename.as_str());
         let img_data = ImageBuf::from_file(profile_pic_file);
 
@@ -122,11 +180,19 @@ fn main() -> Result<(), PlatformError> {
         user_id: user_id, profile_pic: profile_pic_buffers[user_id as usize].clone()};
     initial_state.timeline_data.push_back(msg);
 
+    let window = WindowDesc::new(
+        build_ui()
+    ).window_size((300.0, 450.0));
+    let window_id = window.id;
+
     AppLauncher::with_window(
-        WindowDesc::new(
-            build_ui()
-        ).window_size((300.0, 450.0))
-    ).launch(
+        window
+    ).delegate(
+        Delegate {
+            main_window_id: window_id,
+        }
+    )
+    .launch(
         initial_state
     )?;
     Ok(())
