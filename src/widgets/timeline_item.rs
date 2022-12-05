@@ -4,9 +4,10 @@ use druid::{Widget, WidgetExt, widget, WindowHandle};
 use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
-use druid::Screen;
-
+use druid;
 use crate::Message;
+use num_traits;
+use num_derive;
 
 pub struct TimelineItemWidget {
     label: WidgetPod<Message, widget::Container<Message>>,
@@ -19,9 +20,10 @@ const MSG_COLOR: Color = Color::rgb8(75, 75, 76);
 const ARROW_SIZE: f64 = 7.0;
 const ARROW_X: f64 = PROFILE_PIC_AREA;
 const CURVE_PATH: bool = true;
-const PICTURE_SHAPE: PictureShape = PictureShape::Circle;
+
+#[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
 pub enum PictureShape {
-    Rectangle,
+    Rectangle = 0,
     RoundedRectangle,
     Circle,
     Hexagon,
@@ -94,6 +96,9 @@ impl TimelineItemWidget {
         }
     }
 
+    // This will ideally be used to use the ideal icon size
+    // However, it doesn't work on mac os.
+    #[allow(dead_code)]
     pub fn get_required_icon_resolution(window: &WindowHandle) -> f64 {
         let scale_request = window.get_scale();
         match scale_request {
@@ -170,12 +175,14 @@ impl Widget<Message> for TimelineItemWidget {
             image_data.to_image(ctx.render_ctx)
         };
         ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
-            match PICTURE_SHAPE {
-                PictureShape::Rectangle => {},
-                PictureShape::RoundedRectangle => ctx.clip(RoundedRect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH, 6.0)),
-                PictureShape::Circle => ctx.clip(Circle::new(Point::new(PROFILE_PIC_WIDTH / 2.0, PROFILE_PIC_WIDTH / 2.0), PROFILE_PIC_WIDTH / 2.0)),
-                PictureShape::Hexagon => ctx.clip(make_hexagon_path(0.08, 0.25)),
-                PictureShape::Octagon => ctx.clip(make_octagon_path(0.25)),
+            let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
+            match num_traits::FromPrimitive::from_u64(shape_as_int) {
+                Some(PictureShape::Rectangle) => {},
+                Some(PictureShape::RoundedRectangle) => ctx.clip(RoundedRect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH, 6.0)),
+                Some(PictureShape::Circle) => ctx.clip(Circle::new(Point::new(PROFILE_PIC_WIDTH / 2.0, PROFILE_PIC_WIDTH / 2.0), PROFILE_PIC_WIDTH / 2.0)),
+                Some(PictureShape::Hexagon) => ctx.clip(make_hexagon_path(0.08, 0.25)),
+                Some(PictureShape::Octagon) => ctx.clip(make_octagon_path(0.25)),
+                None => eprintln!("unknown number"),
             }
             ctx.draw_image(&piet_image, 
                 druid::Rect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH),

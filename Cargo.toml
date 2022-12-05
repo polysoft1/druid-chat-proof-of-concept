@@ -11,3 +11,5 @@ piet-common = { git = "https://github.com/linebender/piet.git" }
 usvg = { version = "0.14.1" }
 tracing = { version = "0.1.22" }
 rand = "0.8"
+num-traits = "0.2"
+num-derive = "0.2"

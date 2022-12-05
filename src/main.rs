@@ -1,22 +1,28 @@
-use druid::{AppLauncher, WindowDesc, Widget, PlatformError, WidgetExt, ImageBuf, AppDelegate, WindowId, WindowHandle};
+use druid::{AppLauncher, WindowDesc, Widget, PlatformError, WidgetExt, ImageBuf, AppDelegate, EventCtx};
 use druid::widget;
 use druid::im;
 use druid;
 use std::sync;
-use tracing::{error, Instrument};
+use tracing::{error};
 use rand::Rng;
 use std::path::Path;
-use core::time::Duration;
 
 mod widgets;
-use widgets::timeline_item;
+use widgets::timeline_item::{self, PictureShape};
 
-use crate::widgets::timeline_item::TimelineItemWidget;
+pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.image_shape");
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
     text_edit: sync::Arc<String>,
     timeline_data: im::Vector<Message>,
+    layout_settings: LayoutSettings,
+}
+
+#[derive(Clone, druid::Data, druid::Lens)]
+struct LayoutSettings {
+    settings_open: bool,
+    picture_shape: PictureShape,
 }
 
 #[derive(Clone, druid::Data)]
@@ -27,7 +33,7 @@ struct Message {
 }
 
 struct Delegate {
-    main_window_id: WindowId,
+    window_count: i32,
 }
 
 impl AppDelegate<AppState> for Delegate {
@@ -55,31 +61,47 @@ impl AppDelegate<AppState> for Delegate {
 
     fn window_added(
         &mut self,
-        id: druid::WindowId,
-        handle: druid::WindowHandle,
+        _id: druid::WindowId,
+        _handle: druid::WindowHandle,
         _data: &mut AppState,
         _env: &druid::Env,
         _ctx: &mut druid::DelegateCtx,
     ) {
-        if id == self.main_window_id {
-            println!("Main Window Added");
-            println!("PX Required: {}", timeline_item::TimelineItemWidget::get_required_icon_resolution(&handle));
-        } else {
-            println!("Other Window Added");
-        }
+        self.window_count += 1;
     }
 
-    fn window_removed(&mut self, id: druid::WindowId, _data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
-        if id == self.main_window_id {
-            println!("Main Window Removed");
-
-        } else {
-            println!("Other Window Removed");
+    fn window_removed(&mut self, _id: druid::WindowId, _data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
+        self.window_count -= 1;
+        if self.window_count <= 0 {
+            println!("All windows closed. Quitting...");
+            druid::Application::global().quit();
         }
     }
 }
 
-fn build_ui() -> impl Widget<AppState> {
+fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid::Env) {
+    println!("Settings click");
+
+    if state.layout_settings.settings_open {
+        println!("Settings already open. Ignoring.");
+    } else {
+        state.layout_settings.settings_open = true; // Prevent it from being opened a second time
+        let new_win = WindowDesc::new(build_settings_ui());
+        ctx.new_window(new_win);
+    }
+}
+
+//fn on_pic_shape_change(ctx: &mut EventCtx, state: &mut PictureShape, env: &druid::Env) {
+//}
+
+fn get_chat_window_desc() -> WindowDesc<AppState> {
+    let main_window = WindowDesc::new(
+        build_chat_ui()
+    ).window_size((300.0, 450.0));
+    return main_window;
+}
+
+fn build_chat_ui() -> impl Widget<AppState> {
     let send_svg = match include_str!("./assets/send.svg").parse::<widget::SvgData>() {
         Ok(svg) => svg,
         Err(err) => {
@@ -105,7 +127,10 @@ fn build_ui() -> impl Widget<AppState> {
             .expand_width(),
         1.0)
         .with_child(
-            widget::Svg::new(settings_svg).fix_height(15.0).padding(7.0)
+            widget::ControllerHost::new(
+                widget::Svg::new(settings_svg).fix_height(15.0).padding(7.0),
+                widget::Click::new(on_settings_icon_click)
+            )
         )
         .background(druid::theme::BACKGROUND_LIGHT);
 
@@ -132,7 +157,7 @@ fn build_ui() -> impl Widget<AppState> {
     .expand()
     .lens(AppState::timeline_data);
 
-    widget::Flex::column()
+    let layout = widget::Flex::column()
         // Title
         .with_child(
             title
@@ -143,14 +168,48 @@ fn build_ui() -> impl Widget<AppState> {
         .with_child(
             editor
         )
-        .must_fill_main_axis(true)
-    }
+        .must_fill_main_axis(true);
+    widget::EnvScope::new(
+        |env: &mut druid::env::Env, data: &AppState| {
+            env.set(IMAGE_SHAPE_KEY, data.layout_settings.picture_shape as u64);
+        },
+        layout
+    )
+}
+
+const SHAPE_OPTIONS: [(&str, PictureShape); 5] =
+[
+    ("Circle", PictureShape::Circle),
+    ("Rectangle", PictureShape::Rectangle),
+    ("Rounded Rectangle", PictureShape::RoundedRectangle),
+    ("Hexagon", PictureShape::Hexagon),
+    ("Octagon", PictureShape::Octagon),
+];
+
+fn build_settings_ui() -> impl Widget<AppState> {
+    widget::Flex::column()
+        .with_child(
+            widget::Flex::row()
+                .with_child(
+                    widget::Label::new("Profile Pic Shape:")
+                )
+                .with_default_spacer()
+                .with_child(
+                    widget::RadioGroup::column(SHAPE_OPTIONS)
+                        //.on_click(on_pic_shape_change)
+                        .lens(LayoutSettings::picture_shape)
+                )
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                .lens(AppState::layout_settings)
+    )
+}
 
 fn main() -> Result<(), PlatformError> {
     // create the initial app state
     let mut initial_state = AppState {
         text_edit: "".to_string().into(),
         timeline_data: im::vector![],
+        layout_settings: LayoutSettings { settings_open: false, picture_shape: PictureShape::Circle }
     };
 
     let mut rng = rand::thread_rng();
@@ -180,16 +239,11 @@ fn main() -> Result<(), PlatformError> {
         user_id: user_id, profile_pic: profile_pic_buffers[user_id as usize].clone()};
     initial_state.timeline_data.push_back(msg);
 
-    let window = WindowDesc::new(
-        build_ui()
-    ).window_size((300.0, 450.0));
-    let window_id = window.id;
-
     AppLauncher::with_window(
-        window
+        get_chat_window_desc()
     ).delegate(
         Delegate {
-            main_window_id: window_id,
+            window_count: 0,
         }
     )
     .launch(
