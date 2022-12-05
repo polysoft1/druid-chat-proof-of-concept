@@ -6,11 +6,15 @@ use std::sync;
 use tracing::{error};
 use rand::Rng;
 use std::path::Path;
+use druid::piet::Color;
 
 mod widgets;
-use widgets::timeline_item::{self, PictureShape};
+use widgets::timeline_item::{self, PictureShape, TailShape};
 
 pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.image_shape");
+pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.image_size");
+pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
+pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
@@ -23,6 +27,9 @@ struct AppState {
 struct LayoutSettings {
     settings_open: bool,
     picture_shape: PictureShape,
+    picture_size: f64,
+    chat_bubble_tail_shape: TailShape,
+    chat_bubble_picture_spacing: f64,
 }
 
 #[derive(Clone, druid::Data)]
@@ -172,12 +179,15 @@ fn build_chat_ui() -> impl Widget<AppState> {
     widget::EnvScope::new(
         |env: &mut druid::env::Env, data: &AppState| {
             env.set(IMAGE_SHAPE_KEY, data.layout_settings.picture_shape as u64);
+            env.set(IMAGE_SIZE_KEY, data.layout_settings.picture_size as f64);
+            env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, data.layout_settings.chat_bubble_tail_shape as u64);
+            env.set(CHAT_BUBBLE_IMG_SPACING_KEY, data.layout_settings.chat_bubble_picture_spacing as f64);
         },
         layout
     )
 }
 
-const SHAPE_OPTIONS: [(&str, PictureShape); 5] =
+const IMG_SHAPE_OPTIONS: [(&str, PictureShape); 5] =
 [
     ("Circle", PictureShape::Circle),
     ("Rectangle", PictureShape::Rectangle),
@@ -185,23 +195,85 @@ const SHAPE_OPTIONS: [(&str, PictureShape); 5] =
     ("Hexagon", PictureShape::Hexagon),
     ("Octagon", PictureShape::Octagon),
 ];
+const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 2] =
+[
+    ("Concave Bottom", TailShape::ConcaveBottom),
+    ("Straight", TailShape::Straight),
+];
 
 fn build_settings_ui() -> impl Widget<AppState> {
     widget::Flex::column()
         .with_child(
+            widget::Label::new("Layout Settings")
+                .with_text_size(20.0).padding(8.0).align_left()
+        )
+        .with_default_spacer()
+        .with_child(
             widget::Flex::row()
-                .with_child(
-                    widget::Label::new("Profile Pic Shape:")
-                )
+                .with_flex_child(
+                    widget::Label::new("Profile Pic Shape:").align_right()
+                , 1.0)
                 .with_default_spacer()
-                .with_child(
-                    widget::RadioGroup::column(SHAPE_OPTIONS)
+                .with_flex_child(
+                    widget::RadioGroup::column(IMG_SHAPE_OPTIONS)
                         //.on_click(on_pic_shape_change)
                         .lens(LayoutSettings::picture_shape)
-                )
+                , 1.0)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
                 .lens(AppState::layout_settings)
-    )
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Profile Pic Size:").align_right()
+                , 1.0)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(10.0, 100.0).with_step(1.0)
+                    .lens(LayoutSettings::picture_size)
+                , 0.7)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:1}", data.picture_size)}),
+                    0.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                .lens(AppState::layout_settings)
+        )
+        .with_spacer(20.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(
+                    widget::Label::new("Bubble Tail Shape:").align_right()
+                , 1.0)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::RadioGroup::column(TAIL_SHAPE_OPTIONS)
+                        //.on_click(on_pic_shape_change)
+                        .lens(LayoutSettings::chat_bubble_tail_shape)
+                , 1.0)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                .lens(AppState::layout_settings)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Profile Pic Bubble Spacing:").align_right()
+                , 1.0)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 15.0).with_step(0.1)
+                    .lens(LayoutSettings::chat_bubble_picture_spacing)
+                , 0.7)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_picture_spacing)}),
+                    0.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                .lens(AppState::layout_settings)
+        )
+        .with_spacer(30.0)
+        .with_child(
+            widget::Label::new("Shape changes require scroll to take effect\nSize changes require window resize to take effect")
+                .with_text_size(20.0).with_text_color(Color::RED)
+        )
 }
 
 fn main() -> Result<(), PlatformError> {
@@ -209,7 +281,13 @@ fn main() -> Result<(), PlatformError> {
     let mut initial_state = AppState {
         text_edit: "".to_string().into(),
         timeline_data: im::vector![],
-        layout_settings: LayoutSettings { settings_open: false, picture_shape: PictureShape::Circle }
+        layout_settings: LayoutSettings {
+            settings_open: false,
+            picture_shape: PictureShape::Circle,
+            picture_size: 35.0,
+            chat_bubble_tail_shape: TailShape::ConcaveBottom,
+            chat_bubble_picture_spacing: 3.5,
+        }
     };
 
     let mut rng = rand::thread_rng();

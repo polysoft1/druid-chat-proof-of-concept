@@ -1,6 +1,6 @@
 use druid::kurbo::{Circle, RoundedRect};
 use druid::widget::prelude::*;
-use druid::{Widget, WidgetExt, widget, WindowHandle};
+use druid::{Widget, WidgetExt, widget};
 use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
@@ -13,13 +13,8 @@ pub struct TimelineItemWidget {
     label: WidgetPod<Message, widget::Container<Message>>,
 }
 
-const PROFILE_PIC_WIDTH: f64 = 35.0;
-const PROFILE_PIC_SPACING: f64 = 3.5;
-const PROFILE_PIC_AREA: f64 = PROFILE_PIC_WIDTH + PROFILE_PIC_SPACING;
 const MSG_COLOR: Color = Color::rgb8(75, 75, 76);
 const ARROW_SIZE: f64 = 7.0;
-const ARROW_X: f64 = PROFILE_PIC_AREA;
-const CURVE_PATH: bool = true;
 
 #[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
 pub enum PictureShape {
@@ -30,36 +25,46 @@ pub enum PictureShape {
     Octagon,
 }
 
-fn make_arrow_path() -> kurbo::BezPath {
+#[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
+pub enum TailShape {
+    Straight = 0,
+    ConcaveBottom,
+}
+
+fn make_tail_path(tail_area: f64, shape: TailShape) -> kurbo::BezPath {
     let mut path = kurbo::BezPath::new();
-    path.move_to(Point::new(ARROW_X, 0.0)); // Start
-    path.line_to(Point::new(ARROW_X - ARROW_SIZE, 0.0)); // towards picture
+    path.move_to(Point::new(tail_area, 0.0)); // Start
+    path.line_to(Point::new(tail_area - ARROW_SIZE, 0.0)); // towards picture
     // Now to low point. + is down
-    if CURVE_PATH {
-        path.quad_to(
-            Point::new(ARROW_X - ARROW_SIZE/4.0, ARROW_SIZE/4.0),
-            Point::new(ARROW_X, ARROW_SIZE * 1.3),
-        );
-    } else {
-        path.line_to(Point::new(ARROW_X, ARROW_SIZE));            
+    match shape {
+        TailShape::ConcaveBottom => {
+            path.quad_to(
+                Point::new(tail_area - ARROW_SIZE/4.0, ARROW_SIZE/4.0),
+                Point::new(tail_area, ARROW_SIZE * 1.3),
+            );
+        }
+        TailShape::Straight => {
+            path.line_to(Point::new(tail_area, ARROW_SIZE));
+        }
     }
+
     // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
-    path.line_to(Point::new(ARROW_X + ARROW_SIZE * 2.0, 0.0));
-    path.line_to(Point::new(ARROW_X, 0.0));
+    path.line_to(Point::new(tail_area + ARROW_SIZE * 2.0, 0.0));
+    path.line_to(Point::new(tail_area, 0.0));
     path.close_path();
     path
 }
-fn make_hexagon_path(vertical_trim: f64, inset: f64) -> kurbo::BezPath {
+fn make_hexagon_path(vertical_trim: f64, inset: f64, pic_width: f64) -> kurbo::BezPath {
     let mut path = kurbo::BezPath::new();
-    let second_x = PROFILE_PIC_WIDTH * inset;
-    let third_x = PROFILE_PIC_WIDTH * (1.0 - inset);
-    let top_y = PROFILE_PIC_WIDTH * vertical_trim;
-    let middle_y = PROFILE_PIC_WIDTH / 2.0;
-    let bottom_y = PROFILE_PIC_WIDTH * (1.0 - vertical_trim);
+    let second_x = pic_width * inset;
+    let third_x = pic_width * (1.0 - inset);
+    let top_y = pic_width * vertical_trim;
+    let middle_y = pic_width / 2.0;
+    let bottom_y = pic_width * (1.0 - vertical_trim);
     path.move_to(Point::new(0.0, middle_y)); // Start
     path.line_to(Point::new( second_x, top_y));
     path.line_to(Point::new( third_x, top_y));
-    path.line_to(Point::new( PROFILE_PIC_WIDTH, middle_y));
+    path.line_to(Point::new( pic_width, middle_y));
     path.line_to(Point::new( third_x, bottom_y));
     path.line_to(Point::new( second_x, bottom_y));
     path.line_to(Point::new(0.0, middle_y));
@@ -67,18 +72,18 @@ fn make_hexagon_path(vertical_trim: f64, inset: f64) -> kurbo::BezPath {
     path
 }
 
-fn make_octagon_path(fraction_from_corner: f64) -> kurbo::BezPath {
-    let dist_from_corner = PROFILE_PIC_WIDTH * fraction_from_corner;
-    let other_side_pos = PROFILE_PIC_WIDTH - dist_from_corner;
+fn make_octagon_path(fraction_from_corner: f64, pic_width: f64) -> kurbo::BezPath {
+    let dist_from_corner = pic_width * fraction_from_corner;
+    let other_side_pos = pic_width - dist_from_corner;
 
     let mut path = kurbo::BezPath::new();
     path.move_to(Point::new(0.0, dist_from_corner)); // Start
     path.line_to(Point::new( dist_from_corner, 0.0));
     path.line_to(Point::new( other_side_pos, 0.0));
-    path.line_to(Point::new( PROFILE_PIC_WIDTH, dist_from_corner));
-    path.line_to(Point::new( PROFILE_PIC_WIDTH, other_side_pos));
-    path.line_to(Point::new( other_side_pos, PROFILE_PIC_WIDTH));
-    path.line_to(Point::new( dist_from_corner, PROFILE_PIC_WIDTH));
+    path.line_to(Point::new( pic_width, dist_from_corner));
+    path.line_to(Point::new( pic_width, other_side_pos));
+    path.line_to(Point::new( other_side_pos, pic_width));
+    path.line_to(Point::new( dist_from_corner, pic_width));
     path.line_to(Point::new( 0.0, other_side_pos));
     path.close_path();
     path
@@ -96,22 +101,6 @@ impl TimelineItemWidget {
         }
     }
 
-    // This will ideally be used to use the ideal icon size
-    // However, it doesn't work on mac os.
-    #[allow(dead_code)]
-    pub fn get_required_icon_resolution(window: &WindowHandle) -> f64 {
-        let scale_request = window.get_scale();
-        match scale_request {
-            Ok(scale) => {
-                println!("Scale_Y: {}", scale.y());
-                scale.x() * PROFILE_PIC_WIDTH
-            },
-            Err(e) => {
-                eprintln!("Error getting scale: {}", e);
-                return PROFILE_PIC_WIDTH;
-            }
-        }
-    }
 }
 
 impl Widget<Message> for TimelineItemWidget {
@@ -139,18 +128,22 @@ impl Widget<Message> for TimelineItemWidget {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &Message,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
+        let profile_pic_width = env.get(crate::IMAGE_SIZE_KEY);
+        let profile_pic_bubble_spacing = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
+        let profile_pic_area = profile_pic_width + profile_pic_bubble_spacing;
+
         // Label, which is offset to right to fit profile pic
-        let label_origin: Point = Point::new(PROFILE_PIC_AREA, 0.0);
+        let label_origin: Point = Point::new(profile_pic_area, 0.0);
         let label_bounding_box = BoxConstraints::new(
             Size::new(0.0, 0.0),
-            Size::new(bc.max().width - PROFILE_PIC_AREA, bc.max().height)
+            Size::new(bc.max().width - profile_pic_area, bc.max().height)
         );
-        self.label.set_origin(_layout_ctx, _data, _env, label_origin);
+        self.label.set_origin(_layout_ctx, _data, env, label_origin);
 
-        let label_size = self.label.layout(_layout_ctx, &label_bounding_box, _data, _env);        
-        
+        let label_size = self.label.layout(_layout_ctx, &label_bounding_box, _data, env);
+
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
         Size::new(bc.max().width, label_size.height)
@@ -169,7 +162,9 @@ impl Widget<Message> for TimelineItemWidget {
         // - Flat along top/bottom, and straight angled down/up
         // - Flat along top/bottom, but curved angled down/up
         // - Curved on both edges (this is what iMessage uses)
-        
+        let profile_pic_width = env.get(crate::IMAGE_SIZE_KEY);
+        let profile_pic_area = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY) + profile_pic_width;
+
         let piet_image = {
             let image_data = data.profile_pic.clone();
             image_data.to_image(ctx.render_ctx)
@@ -178,19 +173,23 @@ impl Widget<Message> for TimelineItemWidget {
             let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
             match num_traits::FromPrimitive::from_u64(shape_as_int) {
                 Some(PictureShape::Rectangle) => {},
-                Some(PictureShape::RoundedRectangle) => ctx.clip(RoundedRect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH, 6.0)),
-                Some(PictureShape::Circle) => ctx.clip(Circle::new(Point::new(PROFILE_PIC_WIDTH / 2.0, PROFILE_PIC_WIDTH / 2.0), PROFILE_PIC_WIDTH / 2.0)),
-                Some(PictureShape::Hexagon) => ctx.clip(make_hexagon_path(0.08, 0.25)),
-                Some(PictureShape::Octagon) => ctx.clip(make_octagon_path(0.25)),
+                Some(PictureShape::RoundedRectangle) => ctx.clip(RoundedRect::new(0.0, 0.0, profile_pic_width, profile_pic_width, 6.0)),
+                Some(PictureShape::Circle) => ctx.clip(Circle::new(Point::new(profile_pic_width / 2.0, profile_pic_width / 2.0), profile_pic_width / 2.0)),
+                Some(PictureShape::Hexagon) => ctx.clip(make_hexagon_path(0.08, 0.25, profile_pic_width)),
+                Some(PictureShape::Octagon) => ctx.clip(make_octagon_path(0.25, profile_pic_width)),
                 None => eprintln!("unknown number"),
             }
-            ctx.draw_image(&piet_image, 
-                druid::Rect::new(0.0, 0.0, PROFILE_PIC_WIDTH, PROFILE_PIC_WIDTH),
+            ctx.draw_image(&piet_image,
+                druid::Rect::new(0.0, 0.0, profile_pic_width, profile_pic_width),
                     druid::piet::InterpolationMode::Bilinear
             );
         });
+        let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
         // Now the little arrow that goes from the image to the bubble
-        ctx.fill(make_arrow_path(), &MSG_COLOR);
+        ctx.fill(make_tail_path(
+            profile_pic_area,
+            num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape")
+        ), &MSG_COLOR);
     }
 
 
