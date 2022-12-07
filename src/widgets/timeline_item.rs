@@ -93,7 +93,8 @@ impl TimelineItemWidget {
     pub fn new() -> Self {
         let label = WidgetPod::new(widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .padding(10.0)
+                .with_text_size(13.0)
+                .padding(7.0)
                 .background(MSG_COLOR)
                 .rounded(7.0));
         Self {
