@@ -10,10 +10,12 @@ use num_traits;
 use num_derive;
 
 pub struct TimelineItemWidget {
-    label: WidgetPod<Message, widget::Container<Message>>,
+    msg_content_label: WidgetPod<Message, widget::Container<Message>>,
+    sender_name_label: WidgetPod<Message, widget::Padding<Message, widget::Label<Message>>>,
 }
 
 const MSG_COLOR: Color = Color::rgb8(75, 75, 76);
+const SUB_TEXT_COLOR: Color = Color::rgb8(175, 175, 175);
 const ARROW_SIZE: f64 = 7.0;
 
 #[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
@@ -91,14 +93,27 @@ fn make_octagon_path(fraction_from_corner: f64, pic_width: f64) -> kurbo::BezPat
 
 impl TimelineItemWidget {
     pub fn new() -> Self {
-        let label = WidgetPod::new(widget::Label::new(|item: &Message, _env: &_| item.message.clone())
+        let msg_content_label = WidgetPod::new(
+            widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .with_text_size(13.0)
+                .with_text_size(14.0)
                 .padding(7.0)
                 .background(MSG_COLOR)
                 .rounded(7.0));
+        let sender_name_label = WidgetPod::new(
+            widget::Label::new(|item: &Message, _env: &_| {
+                let mut username = "User".to_string();
+                username.push_str(item.user_id.to_string().as_str());
+                username
+        })
+            .with_line_break_mode(widget::LineBreaking::WordWrap)
+            .with_text_size(12.0)
+            .with_text_color(SUB_TEXT_COLOR)
+            .padding(3.0)
+        );
         Self {
-            label: label,
+            msg_content_label: msg_content_label,
+            sender_name_label: sender_name_label,
         }
     }
 
@@ -107,7 +122,8 @@ impl TimelineItemWidget {
 impl Widget<Message> for TimelineItemWidget {
 
     fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut Message, _env: &Env) {
-        self.label.event(_ctx, _event, _data, _env);
+        self.msg_content_label.event(_ctx, _event, _data, _env);
+        self.sender_name_label.event(_ctx, _event, _data, _env);
     }
 
     fn lifecycle(
@@ -117,18 +133,20 @@ impl Widget<Message> for TimelineItemWidget {
         _data: &Message,
         _env: &Env,
     ) {
-        self.label.lifecycle(_ctx, _event, _data, _env);
+        self.msg_content_label.lifecycle(_ctx, _event, _data, _env);
+        self.sender_name_label.lifecycle(_ctx, _event, _data, _env);
     }
 
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &Message, _data: &Message, _env: &Env) {
-        self.label.update(_ctx, _data, _env);
+        self.msg_content_label.update(_ctx, _data, _env);
+        self.sender_name_label.update(_ctx, _data, _env);
     }
 
     fn layout(
         &mut self,
-        _layout_ctx: &mut LayoutCtx,
+        layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        _data: &Message,
+        data: &Message,
         env: &Env,
     ) -> Size {
         let profile_pic_width = env.get(crate::IMAGE_SIZE_KEY);
@@ -136,22 +154,27 @@ impl Widget<Message> for TimelineItemWidget {
         let profile_pic_area = profile_pic_width + profile_pic_bubble_spacing;
 
         // Label, which is offset to right to fit profile pic
-        let label_origin: Point = Point::new(profile_pic_area, 0.0);
+        let msg_label_origin: Point = Point::new(profile_pic_area, 0.0);
         let label_bounding_box = BoxConstraints::new(
             Size::new(0.0, 0.0),
             Size::new(bc.max().width - profile_pic_area, bc.max().height)
         );
-        self.label.set_origin(_layout_ctx, _data, env, label_origin);
+        self.msg_content_label.set_origin(layout_ctx, data, env, msg_label_origin);
 
-        let label_size = self.label.layout(_layout_ctx, &label_bounding_box, _data, env);
+        let msg_label_size = self.msg_content_label.layout(layout_ctx, &label_bounding_box, data, env);
+
+        let sender_label_origin: Point = Point::new(profile_pic_area, msg_label_size.height);
+        self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
+        let sender_label_size = self.sender_name_label.layout(layout_ctx, &label_bounding_box, data, env);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        Size::new(bc.max().width, label_size.height)
+        Size::new(bc.max().width, msg_label_size.height + sender_label_size.height)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
-        self.label.paint(ctx, data, env);
+        self.msg_content_label.paint(ctx, data, env);
+        self.sender_name_label.paint(ctx, data, env);
 
         // For bubbled chats, the styles I've seen are:
         // - Point arrow attached alongside profile pic

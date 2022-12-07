@@ -157,7 +157,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
         widget::List::new( move || {
             timeline_item::TimelineItemWidget::new()
         })
-        .with_spacing(10.0)
+        .with_spacing(5.0)
         .padding(5.0)
     )
     .vertical()
