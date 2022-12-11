@@ -37,6 +37,7 @@ struct Message {
     user_id: u32,
     profile_pic: ImageBuf,
     message: String,
+    timestamp_epoch_seconds: i64,
 }
 
 struct Delegate {
@@ -157,7 +158,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
         widget::List::new( move || {
             timeline_item::TimelineItemWidget::new()
         })
-        .with_spacing(5.0)
+        .with_spacing(6.0)
         .padding(5.0)
     )
     .vertical()
@@ -306,16 +307,31 @@ fn main() -> Result<(), PlatformError> {
         profile_pic_buffers.push(img_data.unwrap());
     }
 
+    let mut time = chrono::offset::Local::now().timestamp();
+    time -= 10; // 10 seconds ago
+    let mut offset_amount = 60;
+
     for _ in 1..20 {
         msg_body.push_str(" Appended!");
         let user_id = rng.gen_range(0..5);
-        let msg = Message { message: msg_body.clone(), user_id: user_id, profile_pic: profile_pic_buffers[user_id as usize].clone()};
-        initial_state.timeline_data.push_back(msg);
+        let msg = Message {
+            timestamp_epoch_seconds: time,
+            message: msg_body.clone(),
+            user_id: user_id,
+            profile_pic: profile_pic_buffers[user_id as usize].clone()
+        };
+        initial_state.timeline_data.push_front(msg);
+        time -= offset_amount;
+        offset_amount *= 2;
     }
     let user_id = rng.gen_range(0..5);
-    let msg = Message { message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
-        user_id: user_id, profile_pic: profile_pic_buffers[user_id as usize].clone()};
-    initial_state.timeline_data.push_back(msg);
+    let msg = Message {
+        timestamp_epoch_seconds: time,
+        message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
+        user_id: user_id,
+        profile_pic: profile_pic_buffers[user_id as usize].clone()
+    };
+    initial_state.timeline_data.push_front(msg);
 
     AppLauncher::with_window(
         get_chat_window_desc()

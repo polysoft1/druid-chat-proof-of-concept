@@ -9,12 +9,15 @@ use crate::Message;
 use num_traits;
 use num_derive;
 
+extern crate chrono;
+use chrono::{ Datelike, TimeZone, Timelike};
+
 pub struct TimelineItemWidget {
     msg_content_label: WidgetPod<Message, widget::Container<Message>>,
     sender_name_label: WidgetPod<Message, widget::Padding<Message, widget::Label<Message>>>,
 }
 
-const MSG_COLOR: Color = Color::rgb8(75, 75, 76);
+const MSG_COLOR: Color = Color::rgb8(74, 74, 76);
 const SUB_TEXT_COLOR: Color = Color::rgb8(175, 175, 175);
 const ARROW_SIZE: f64 = 7.0;
 
@@ -91,6 +94,58 @@ fn make_octagon_path(fraction_from_corner: f64, pic_width: f64) -> kurbo::BezPat
     path
 }
 
+fn timestamp_to_display_msg(epoch: i64, compact: bool) -> String {
+    // Helpful reference: https://help.gnome.org/users/gthumb/stable/gthumb-date-formats.html.en
+    let now = chrono::offset::Local::now();
+
+    let local_time = chrono::Local.timestamp_opt(epoch, 0);
+    match local_time {
+        chrono::LocalResult::Single(local_msg_time) => {
+            let same_year = now.year() == local_msg_time.year();
+            let day_diff = now.ordinal0() as i32 - local_msg_time.ordinal0() as i32;
+            if same_year && day_diff <= 7
+            {
+                let mut result = String::new();
+
+                if day_diff == 0 {
+                    // Same day
+                    if !compact {
+                        result.push_str(" Today at");
+                    }
+                } else if day_diff == 1 {
+                    result.push_str(" Yesterday at");
+                } else {
+                    result.push(' ');
+                    result.push_str(local_msg_time.weekday().to_string().as_str());
+                    result.push_str(" at");
+                }
+                // Account for it adding a space before single-digit results
+                if local_msg_time.hour12().1 > 9 {
+                    result.push(' ');
+                }
+
+                result.push_str(local_msg_time.format("%l:%M %P").to_string().as_str());
+                return result;
+            } else {
+                // A while ago, so just display date
+                let mut result = String::new();
+                result.push(' ');
+                let format: &str;
+                if compact {
+                    format = "%D";
+                } else {
+                    format = "%D at %I:%M %P";
+                }
+                result.push_str(local_msg_time.format(format).to_string().as_str());
+                return result;
+            }
+        },
+        chrono::LocalResult::Ambiguous(_a, _b) => { return "Amiguous".to_string(); },
+        chrono::LocalResult::None => { return "Invalid Time".to_string(); },
+    }
+
+}
+
 impl TimelineItemWidget {
     pub fn new() -> Self {
         let msg_content_label = WidgetPod::new(
@@ -104,10 +159,12 @@ impl TimelineItemWidget {
             widget::Label::new(|item: &Message, _env: &_| {
                 let mut username = "User".to_string();
                 username.push_str(item.user_id.to_string().as_str());
+                username.push_str(" •");
+                username.push_str(timestamp_to_display_msg(item.timestamp_epoch_seconds, true).as_str());
                 username
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
-            .with_text_size(12.0)
+            .with_text_size(11.0)
             .with_text_color(SUB_TEXT_COLOR)
             .padding(3.0)
         );
