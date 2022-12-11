@@ -7,6 +7,7 @@ use tracing::{error};
 use rand::Rng;
 use std::path::Path;
 use druid::piet::Color;
+use std::env;
 
 mod widgets;
 use widgets::timeline_item::{self, PictureShape, TailShape};
@@ -15,6 +16,7 @@ pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft
 pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.image_size");
 pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
+pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
@@ -100,15 +102,18 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
     }
 }
 
-fn on_send_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid::Env) {
+fn on_send_icon_click(ctx: &mut EventCtx, state: &mut AppState, env: &druid::Env) {
     println!("Send click");
+
+    // Find which user is self
+    let self_id = env.get(SELF_USER_ID_KEY);
 
     state.timeline_data.push_back(
         Message {
             message: state.text_edit.to_string(),
             timestamp_epoch_seconds: chrono::offset::Local::now().timestamp(),
-            user_id: 0,
-            profile_pic: state.profile_pics[0].clone(),
+            user_id: self_id as u32,
+            profile_pic: state.profile_pics[self_id as usize].clone(),
         }
     );
 
@@ -297,6 +302,25 @@ fn build_settings_ui() -> impl Widget<AppState> {
         )
 }
 
+fn get_self_user_from_args() -> u64 {
+    let args: Vec<String> = env::args().collect();
+    if args.len() >= 2 {
+        let parsed_input = args[1].parse::<u64>();
+        match parsed_input {
+            Ok(user_id) => {
+                return user_id;
+            },
+            Err(_e) => {
+                eprintln!("Could not parse first arg. Expected int as user ID.");
+                return 0;
+            }
+        }
+    } else {
+        println!("Using default self user 0");
+        return 0;
+    }
+}
+
 fn main() -> Result<(), PlatformError> {
     // create the initial app state
     let mut initial_state = AppState {
@@ -325,6 +349,11 @@ fn main() -> Result<(), PlatformError> {
         let img_data = ImageBuf::from_file(profile_pic_file);
 
         initial_state.profile_pics.push_back(img_data.unwrap());
+    }
+    // Set self user
+    let mut self_id = get_self_user_from_args();
+    if self_id > 4 {
+        self_id = 0;
     }
 
     let mut time = chrono::offset::Local::now().timestamp();
@@ -360,6 +389,10 @@ fn main() -> Result<(), PlatformError> {
             window_count: 0,
         }
     )
+    .configure_env(move |env, _| {
+        // Makes it so the entire UI knows which ID the user is.
+        env.set(SELF_USER_ID_KEY, self_id);
+    })
     .launch(
         initial_state
     )?;
