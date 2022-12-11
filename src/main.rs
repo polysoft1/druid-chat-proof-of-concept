@@ -20,6 +20,7 @@ pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::n
 struct AppState {
     text_edit: sync::Arc<String>,
     timeline_data: im::Vector<Message>,
+    profile_pics: im::Vector<ImageBuf>,
     layout_settings: LayoutSettings,
 }
 
@@ -35,9 +36,9 @@ struct LayoutSettings {
 #[derive(Clone, druid::Data)]
 struct Message {
     user_id: u32,
-    profile_pic: ImageBuf,
     message: String,
     timestamp_epoch_seconds: i64,
+    profile_pic: ImageBuf,
 }
 
 struct Delegate {
@@ -99,6 +100,21 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
     }
 }
 
+fn on_send_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid::Env) {
+    println!("Send click");
+
+    state.timeline_data.push_back(
+        Message {
+            message: state.text_edit.to_string(),
+            timestamp_epoch_seconds: chrono::offset::Local::now().timestamp(),
+            user_id: 0,
+            profile_pic: state.profile_pics[0].clone(),
+        }
+    );
+
+    //state.text_edit
+}
+
 //fn on_pic_shape_change(ctx: &mut EventCtx, state: &mut PictureShape, env: &druid::Env) {
 //}
 
@@ -151,7 +167,11 @@ fn build_chat_ui() -> impl Widget<AppState> {
                 .expand_width(),
         1.0)
         .with_child(
-            widget::Svg::new(send_svg).fix_height(25.0).padding(5.0)
+            widget::ControllerHost::new(
+                widget::Svg::new(send_svg).fix_height(25.0).padding(5.0),
+                widget::Click::new(on_send_icon_click)
+            )
+            
         );
 
     let timeline = widget::Scroll::new(
@@ -282,6 +302,7 @@ fn main() -> Result<(), PlatformError> {
     let mut initial_state = AppState {
         text_edit: "".to_string().into(),
         timeline_data: im::vector![],
+        profile_pics: im::vector![],
         layout_settings: LayoutSettings {
             settings_open: false,
             picture_shape: PictureShape::Circle,
@@ -298,13 +319,12 @@ fn main() -> Result<(), PlatformError> {
     // Find required image resolution to not cause blurry profile pics
 
     // Load profile pics
-    let mut profile_pic_buffers: Vec<ImageBuf> = Vec::new();
     for i in 1..6 {
         let filename = format!("./images/user_{}_55px.png", i);
         let profile_pic_file = Path::new(filename.as_str());
         let img_data = ImageBuf::from_file(profile_pic_file);
 
-        profile_pic_buffers.push(img_data.unwrap());
+        initial_state.profile_pics.push_back(img_data.unwrap());
     }
 
     let mut time = chrono::offset::Local::now().timestamp();
@@ -318,7 +338,7 @@ fn main() -> Result<(), PlatformError> {
             timestamp_epoch_seconds: time,
             message: msg_body.clone(),
             user_id: user_id,
-            profile_pic: profile_pic_buffers[user_id as usize].clone()
+            profile_pic: initial_state.profile_pics[user_id as usize].clone(),
         };
         initial_state.timeline_data.push_front(msg);
         time -= offset_amount;
@@ -329,7 +349,7 @@ fn main() -> Result<(), PlatformError> {
         timestamp_epoch_seconds: time,
         message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
         user_id: user_id,
-        profile_pic: profile_pic_buffers[user_id as usize].clone()
+        profile_pic: initial_state.profile_pics[user_id as usize].clone(),
     };
     initial_state.timeline_data.push_front(msg);
 
