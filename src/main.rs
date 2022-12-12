@@ -104,7 +104,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
     }
 }
 
-fn on_send_icon_click(ctx: &mut EventCtx, state: &mut AppState, env: &druid::Env) {
+fn on_send_icon_click(_ctx: &mut EventCtx, state: &mut AppState, env: &druid::Env) {
     println!("Send click");
 
     // Find which user is self
