@@ -210,10 +210,16 @@ impl Widget<Message> for TimelineItemWidget {
         data: &Message,
         env: &Env,
     ) -> Size {
-        let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
-        let profile_pic_width = env.get(crate::IMAGE_SIZE_KEY);
-        let profile_pic_bubble_spacing = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
-        let profile_pic_area = profile_pic_width + profile_pic_bubble_spacing;
+        let is_self_user: bool = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let profile_pic_width: f64 = if !is_self_user || env.get(crate::SHOW_SELF_PROFILE_PIC) {
+            // profile pic is shown always when not self, and when configured when self.
+            env.get(crate::IMAGE_SIZE_KEY)
+        } else {
+            // Not shown, so zero.
+            0.0
+        };
+        let profile_pic_bubble_spacing: f64 = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
+        let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
 
         // Do the label first since we need to know its size
         let label_bounding_box = BoxConstraints::new(
@@ -221,7 +227,7 @@ impl Widget<Message> for TimelineItemWidget {
             Size::new(bc.max().width - profile_pic_area, bc.max().height)
         );
         let msg_label_size = self.msg_content_label.layout(layout_ctx, &label_bounding_box, data, env);
-        let msg_x_start = if is_self_user {
+        let msg_x_start: f64 = if is_self_user {
             // Offset so that the profile pic is pushed all the way to the right
             bc.max().width - msg_label_size.width - profile_pic_area
         } else {
@@ -246,6 +252,8 @@ impl Widget<Message> for TimelineItemWidget {
         self.sender_name_label.paint(ctx, data, env);
 
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
+        let show_pic = !is_self_user || show_self_pic;
         // For bubbled chats, the styles I've seen are:
         // - Point arrow attached alongside profile pic
         // - Point arrow attached without profile pic
@@ -256,7 +264,13 @@ impl Widget<Message> for TimelineItemWidget {
         // - Flat along top/bottom, and straight angled down/up
         // - Flat along top/bottom, but curved angled down/up
         // - Curved on both edges (this is what iMessage uses)
-        let profile_pic_width = env.get(crate::IMAGE_SIZE_KEY);
+        let profile_pic_width: f64 = if show_pic {
+            // profile pic is shown always when not self, and when configured when self.
+            env.get(crate::IMAGE_SIZE_KEY)
+        } else {
+            // Not shown, so zero.
+            0.0
+        };
         let profile_pic_spacing= env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
         let profile_pic_x_offset = if is_self_user {
             ctx.size().width - profile_pic_width
@@ -274,35 +288,37 @@ impl Widget<Message> for TimelineItemWidget {
             let image_data = data.profile_pic.clone();
             image_data.to_image(ctx.render_ctx)
         };
-        ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
-            let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
-            match num_traits::FromPrimitive::from_u64(shape_as_int) {
-                Some(PictureShape::Rectangle) => {},
-                Some(PictureShape::RoundedRectangle) => {
-                    ctx.clip(
-                        RoundedRect::new(profile_pic_x_offset, 0.0, 
-                            profile_pic_x_offset + profile_pic_width, profile_pic_width, 6.0)
-                    )
-                },
-                Some(PictureShape::Circle) => {
-                    ctx.clip(Circle::new(
-                        Point::new(profile_pic_x_offset + profile_pic_width / 2.0, profile_pic_width / 2.0), profile_pic_width / 2.0)
-                    )
-                },
-                Some(PictureShape::Hexagon) => {
-                    ctx.clip(make_hexagon_path(profile_pic_x_offset, 0.08, 0.25, profile_pic_width))
-                },
-                Some(PictureShape::Octagon) => {
-                    ctx.clip(make_octagon_path(profile_pic_x_offset, 0.25, profile_pic_width))
-                },
-                None => eprintln!("Shape int does not translate to known shape, or it is not implemented."),
-            }
-            ctx.draw_image(&piet_image,
-                druid::Rect::new(profile_pic_x_offset, 0.0,
-                    profile_pic_width + profile_pic_x_offset, profile_pic_width),
-                    druid::piet::InterpolationMode::Bilinear
-            );
-        });
+        if show_pic {
+            ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
+                let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
+                match num_traits::FromPrimitive::from_u64(shape_as_int) {
+                    Some(PictureShape::Rectangle) => {},
+                    Some(PictureShape::RoundedRectangle) => {
+                        ctx.clip(
+                            RoundedRect::new(profile_pic_x_offset, 0.0, 
+                                profile_pic_x_offset + profile_pic_width, profile_pic_width, 6.0)
+                        )
+                    },
+                    Some(PictureShape::Circle) => {
+                        ctx.clip(Circle::new(
+                            Point::new(profile_pic_x_offset + profile_pic_width / 2.0, profile_pic_width / 2.0), profile_pic_width / 2.0)
+                        )
+                    },
+                    Some(PictureShape::Hexagon) => {
+                        ctx.clip(make_hexagon_path(profile_pic_x_offset, 0.08, 0.25, profile_pic_width))
+                    },
+                    Some(PictureShape::Octagon) => {
+                        ctx.clip(make_octagon_path(profile_pic_x_offset, 0.25, profile_pic_width))
+                    },
+                    None => eprintln!("Shape int does not translate to known shape, or it is not implemented."),
+                }
+                ctx.draw_image(&piet_image,
+                    druid::Rect::new(profile_pic_x_offset, 0.0,
+                        profile_pic_width + profile_pic_x_offset, profile_pic_width),
+                        druid::piet::InterpolationMode::Bilinear
+                );
+            });
+        }
         let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
         // Now the little arrow that goes from the image to the bubble
         ctx.fill(make_tail_path(

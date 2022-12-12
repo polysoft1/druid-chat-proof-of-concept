@@ -17,6 +17,7 @@ pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.
 pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
+pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
@@ -33,6 +34,7 @@ struct LayoutSettings {
     picture_size: f64,
     chat_bubble_tail_shape: TailShape,
     chat_bubble_picture_spacing: f64,
+    show_self_pic: bool,
 }
 
 #[derive(Clone, druid::Data)]
@@ -208,6 +210,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(IMAGE_SIZE_KEY, data.layout_settings.picture_size as f64);
             env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, data.layout_settings.chat_bubble_tail_shape as u64);
             env.set(CHAT_BUBBLE_IMG_SPACING_KEY, data.layout_settings.chat_bubble_picture_spacing as f64);
+            env.set(SHOW_SELF_PROFILE_PIC, data.layout_settings.show_self_pic);
         },
         layout
     )
@@ -264,6 +267,17 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
                 .lens(AppState::layout_settings)
         )
+        .with_spacer(20.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Show Self Profile Pic:").align_right()
+            , 1.0)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .lens(LayoutSettings::show_self_pic)
+            , 1.0)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        .lens(AppState::layout_settings))
         .with_spacer(20.0)
         .with_child(
             widget::Flex::row()
@@ -333,6 +347,7 @@ fn main() -> Result<(), PlatformError> {
             picture_size: 35.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
             chat_bubble_picture_spacing: 3.5,
+            show_self_pic: true,
         }
     };
 
