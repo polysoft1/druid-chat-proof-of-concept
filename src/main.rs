@@ -102,7 +102,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(450.0, 500.0);
+        let settings_size = druid::Size::new(470.0, 550.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);

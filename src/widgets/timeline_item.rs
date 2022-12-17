@@ -42,8 +42,8 @@ pub enum TailShape {
 fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPath {
     let x_translation = if flip_x { -1.0 } else { 1.0 };
     let mut path = kurbo::BezPath::new();
-    path.move_to(Point::new(center_x, 0.0)); // Start
-    path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, 0.0)); // towards picture
+    path.move_to(Point::new(center_x, -0.1)); // Start
+    path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, -0.2)); // towards picture
     // Now to low point. + is down
     match shape {
         TailShape::ConcaveBottom => {
@@ -61,8 +61,8 @@ fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPa
     }
 
     // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
-    path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, 0.0));
-    path.line_to(Point::new(center_x, 0.0));
+    path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, 0.2));
+    path.line_to(Point::new(center_x, -0.1));
     path.close_path();
     path
 }
@@ -161,7 +161,7 @@ impl TimelineItemWidget {
         let msg_content_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .with_text_size(13.5));
+                .with_text_size(13.0));
         let sender_name_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| {
                 let mut username = "User".to_string();
