@@ -21,7 +21,6 @@ const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
 const SELF_MSG_COLOR: Color = Color::rgb8(12, 131, 242);
 const SUB_TEXT_COLOR: Color = Color::rgb8(175, 175, 175);
 const ARROW_SIZE: f64 = 7.0;
-const MSG_PADDING: f64 = 5.0;
 
 #[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
 pub enum PictureShape {
@@ -37,6 +36,15 @@ pub enum TailShape {
     Straight = 0,
     ConcaveBottom,
     Hidden,
+}
+
+#[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
+pub enum ItemLayoutOption {
+    BubbleExternBottomMeta = 0,
+    BubbleInternalBottomMeta,
+    BubbleInternalTopMeta,
+    Bubbleless,
+    IRCStyle,
 }
 
 fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPath {
@@ -214,6 +222,7 @@ impl Widget<Message> for TimelineItemWidget {
         env: &Env,
     ) -> Size {
         let is_self_user: bool = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
         let profile_pic_width: f64 = if !is_self_user || env.get(crate::SHOW_SELF_PROFILE_PIC) {
             // profile pic is shown always when not self, and when configured when self.
             env.get(crate::IMAGE_SIZE_KEY)
@@ -221,39 +230,47 @@ impl Widget<Message> for TimelineItemWidget {
             // Not shown, so zero.
             0.0
         };
+        let msg_padding: f64 = env.get(crate::MSG_PADDING_KEY);
         let profile_pic_bubble_spacing: f64 = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
         let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
 
         // Do the label first since we need to know its size
         let label_bounding_box = BoxConstraints::new(
             Size::new(0.0, 0.0),
-            Size::new(bc.max().width - profile_pic_area - 2.0 * MSG_PADDING, bc.max().height)
+            Size::new(bc.max().width - profile_pic_area - 2.0 * msg_padding, bc.max().height)
         );
         let msg_label_size = self.msg_content_label.layout(layout_ctx, &label_bounding_box, data, env);
         let msg_x_start: f64 = if is_self_user {
             // Offset so that the profile pic is pushed all the way to the right
-            bc.max().width - msg_label_size.width - MSG_PADDING * 2.0 - profile_pic_area
+            bc.max().width - msg_label_size.width - msg_padding * 2.0 - profile_pic_area
         } else {
             // Push to right of profile pic
             profile_pic_area
         };
 
-        let msg_label_origin: Point = Point::new(msg_x_start + MSG_PADDING, MSG_PADDING);
+        let msg_label_origin: Point = Point::new(msg_x_start + msg_padding, msg_padding);
         self.msg_content_label.set_origin(layout_ctx, data, env, msg_label_origin);
 
-        let sender_label_origin: Point = Point::new(msg_x_start, msg_label_size.height + MSG_PADDING * 2.0);
+        let sender_label_origin: Point = if item_layout == ItemLayoutOption::BubbleExternBottomMeta {
+            Point::new(msg_x_start, msg_label_size.height + msg_padding * 2.0 )
+        } else {
+            Point::new(msg_x_start + msg_padding * 0.5, msg_label_size.height + msg_padding * 1.3 )
+        };
+        
         self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
         let sender_label_size = self.sender_name_label.layout(layout_ctx, &label_bounding_box, data, env);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        Size::new(bc.max().width, msg_label_size.height + sender_label_size.height + MSG_PADDING * 2.0)
+        Size::new(bc.max().width, msg_label_size.height + sender_label_size.height + msg_padding * 2.0)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
         let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
         let bubble_radius = env.get(crate::CHAT_BUBBLE_RADIUS_KEY);
+        let msg_padding: f64 = env.get(crate::MSG_PADDING_KEY);
         let show_pic = !is_self_user || show_self_pic;
         let bubble_color = if is_self_user {
             SELF_MSG_COLOR
@@ -295,8 +312,12 @@ impl Widget<Message> for TimelineItemWidget {
 
         // Draw background
         let content_label_rect = self.msg_content_label.layout_rect();
-        let background_rect = RoundedRect::new(content_label_rect.x0 - MSG_PADDING, content_label_rect.y0 - MSG_PADDING,
-            content_label_rect.x1 + MSG_PADDING, content_label_rect.y1 + MSG_PADDING, bubble_radius);
+        let mut bubble_y1 = content_label_rect.y1 + msg_padding;
+        if item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
+            bubble_y1 += self.sender_name_label.layout_rect().height();
+        }
+        let background_rect = RoundedRect::new(content_label_rect.x0 - msg_padding, content_label_rect.y0 - msg_padding,
+            content_label_rect.x1 + msg_padding, bubble_y1, bubble_radius);
         ctx.fill(background_rect, &(bubble_color));
 
         // Draw text
@@ -311,6 +332,7 @@ impl Widget<Message> for TimelineItemWidget {
         if show_pic {
             ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
                 let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
+                let pic_y_offset = 0.3; // For preventing some of the profile pic from showing over the tail
                 match num_traits::FromPrimitive::from_u64(shape_as_int) {
                     Some(PictureShape::Rectangle) => {},
                     Some(PictureShape::RoundedRectangle) => {
@@ -321,7 +343,7 @@ impl Widget<Message> for TimelineItemWidget {
                     },
                     Some(PictureShape::Circle) => {
                         ctx.clip(Circle::new(
-                            Point::new(profile_pic_x_offset + profile_pic_width / 2.0, profile_pic_width / 2.0), profile_pic_width / 2.0)
+                            Point::new(profile_pic_x_offset + profile_pic_width / 2.0, profile_pic_width / 2.0 + pic_y_offset), profile_pic_width / 2.0)
                         )
                     },
                     Some(PictureShape::Hexagon) => {
@@ -333,8 +355,8 @@ impl Widget<Message> for TimelineItemWidget {
                     None => eprintln!("Shape int does not translate to known shape, or it is not implemented."),
                 }
                 ctx.draw_image(&piet_image,
-                    druid::Rect::new(profile_pic_x_offset, 0.0,
-                        profile_pic_width + profile_pic_x_offset, profile_pic_width),
+                    druid::Rect::new(profile_pic_x_offset, pic_y_offset,
+                        profile_pic_width + profile_pic_x_offset, profile_pic_width + pic_y_offset),
                         druid::piet::InterpolationMode::Bilinear
                 );
             });
