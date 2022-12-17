@@ -223,7 +223,7 @@ impl Widget<Message> for TimelineItemWidget {
         // Do the label first since we need to know its size
         let label_bounding_box = BoxConstraints::new(
             Size::new(0.0, 0.0),
-            Size::new(bc.max().width - profile_pic_area, bc.max().height)
+            Size::new(bc.max().width - profile_pic_area - 2.0 * MSG_PADDING, bc.max().height)
         );
         let msg_label_size = self.msg_content_label.layout(layout_ctx, &label_bounding_box, data, env);
         let msg_x_start: f64 = if is_self_user {
