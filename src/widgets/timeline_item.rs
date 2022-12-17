@@ -249,6 +249,7 @@ impl Widget<Message> for TimelineItemWidget {
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
         let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
+        let bubble_radius = env.get(crate::CHAT_BUBBLE_RADIUS_KEY);
         let show_pic = !is_self_user || show_self_pic;
         let bubble_color = if is_self_user {
             SELF_MSG_COLOR
@@ -291,7 +292,7 @@ impl Widget<Message> for TimelineItemWidget {
         // Draw background
         let content_label_rect = self.msg_content_label.layout_rect();
         let background_rect = RoundedRect::new(content_label_rect.x0 - MSG_PADDING, content_label_rect.y0 - MSG_PADDING,
-            content_label_rect.x1 + MSG_PADDING, content_label_rect.y1 + MSG_PADDING, 6.0);
+            content_label_rect.x1 + MSG_PADDING, content_label_rect.y1 + MSG_PADDING, bubble_radius);
         ctx.fill(background_rect, &(bubble_color));
 
         // Draw text

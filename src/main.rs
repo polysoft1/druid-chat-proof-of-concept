@@ -15,6 +15,7 @@ use widgets::timeline_item::{self, PictureShape, TailShape};
 pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.image_shape");
 pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.image_size");
 pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
+pub const CHAT_BUBBLE_RADIUS_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_radius");
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
 pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
@@ -33,6 +34,7 @@ struct LayoutSettings {
     picture_shape: PictureShape,
     picture_size: f64,
     chat_bubble_tail_shape: TailShape,
+    chat_bubble_radius: f64,
     chat_bubble_picture_spacing: f64,
     show_self_pic: bool,
 }
@@ -209,6 +211,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(IMAGE_SHAPE_KEY, data.layout_settings.picture_shape as u64);
             env.set(IMAGE_SIZE_KEY, data.layout_settings.picture_size as f64);
             env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, data.layout_settings.chat_bubble_tail_shape as u64);
+            env.set(CHAT_BUBBLE_RADIUS_KEY, data.layout_settings.chat_bubble_radius as f64);
             env.set(CHAT_BUBBLE_IMG_SPACING_KEY, data.layout_settings.chat_bubble_picture_spacing as f64);
             env.set(SHOW_SELF_PROFILE_PIC, data.layout_settings.show_self_pic);
         },
@@ -296,6 +299,22 @@ fn build_settings_ui() -> impl Widget<AppState> {
         .with_spacer(10.0)
         .with_child(
             widget::Flex::row()
+                .with_flex_child(widget::Label::new("Profile Pic Bubble Radius:").align_right()
+                , 1.0)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    .lens(LayoutSettings::chat_bubble_radius)
+                , 0.7)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_radius)}),
+                    0.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                .lens(AppState::layout_settings)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
                 .with_flex_child(widget::Label::new("Profile Pic Bubble Spacing:").align_right()
                 , 1.0)
                 .with_default_spacer()
@@ -346,6 +365,7 @@ fn main() -> Result<(), PlatformError> {
             picture_shape: PictureShape::Circle,
             picture_size: 35.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
+            chat_bubble_radius: 5.0,
             chat_bubble_picture_spacing: 3.5,
             show_self_pic: true,
         }
