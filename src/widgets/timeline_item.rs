@@ -13,13 +13,15 @@ extern crate chrono;
 use chrono::{ Datelike, TimeZone, Timelike};
 
 pub struct TimelineItemWidget {
-    msg_content_label: WidgetPod<Message, widget::Container<Message>>,
+    msg_content_label: WidgetPod<Message, widget::Label<Message>>,
     sender_name_label: WidgetPod<Message, widget::Padding<Message, widget::Label<Message>>>,
 }
 
-const MSG_COLOR: Color = Color::rgb8(74, 74, 76);
+const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
+const SELF_MSG_COLOR: Color = Color::rgb8(12, 131, 242);
 const SUB_TEXT_COLOR: Color = Color::rgb8(175, 175, 175);
 const ARROW_SIZE: f64 = 7.0;
+const MSG_PADDING: f64 = 5.0;
 
 #[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
 pub enum PictureShape {
@@ -155,10 +157,7 @@ impl TimelineItemWidget {
         let msg_content_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .with_text_size(14.0)
-                .padding(7.0)
-                .background(MSG_COLOR)
-                .rounded(7.0));
+                .with_text_size(13.5));
         let sender_name_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| {
                 let mut username = "User".to_string();
@@ -229,31 +228,34 @@ impl Widget<Message> for TimelineItemWidget {
         let msg_label_size = self.msg_content_label.layout(layout_ctx, &label_bounding_box, data, env);
         let msg_x_start: f64 = if is_self_user {
             // Offset so that the profile pic is pushed all the way to the right
-            bc.max().width - msg_label_size.width - profile_pic_area
+            bc.max().width - msg_label_size.width - MSG_PADDING * 2.0 - profile_pic_area
         } else {
             // Push to right of profile pic
             profile_pic_area
         };
 
-        let msg_label_origin: Point = Point::new(msg_x_start, 0.0);
+        let msg_label_origin: Point = Point::new(msg_x_start + MSG_PADDING, MSG_PADDING);
         self.msg_content_label.set_origin(layout_ctx, data, env, msg_label_origin);
 
-        let sender_label_origin: Point = Point::new(msg_x_start, msg_label_size.height);
+        let sender_label_origin: Point = Point::new(msg_x_start, msg_label_size.height + MSG_PADDING * 2.0);
         self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
         let sender_label_size = self.sender_name_label.layout(layout_ctx, &label_bounding_box, data, env);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        Size::new(bc.max().width, msg_label_size.height + sender_label_size.height)
+        Size::new(bc.max().width, msg_label_size.height + sender_label_size.height + MSG_PADDING * 2.0)
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
-        self.msg_content_label.paint(ctx, data, env);
-        self.sender_name_label.paint(ctx, data, env);
-
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
         let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
         let show_pic = !is_self_user || show_self_pic;
+        let bubble_color = if is_self_user {
+            SELF_MSG_COLOR
+        } else {
+            OTHER_MSG_COLOR
+        };
+
         // For bubbled chats, the styles I've seen are:
         // - Point arrow attached alongside profile pic
         // - Point arrow attached without profile pic
@@ -264,6 +266,8 @@ impl Widget<Message> for TimelineItemWidget {
         // - Flat along top/bottom, and straight angled down/up
         // - Flat along top/bottom, but curved angled down/up
         // - Curved on both edges (this is what iMessage uses)
+
+        // First, do the calculations and variables
         let profile_pic_width: f64 = if show_pic {
             // profile pic is shown always when not self, and when configured when self.
             env.get(crate::IMAGE_SIZE_KEY)
@@ -271,9 +275,10 @@ impl Widget<Message> for TimelineItemWidget {
             // Not shown, so zero.
             0.0
         };
+        let total_width = ctx.size().width;
         let profile_pic_spacing= env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
         let profile_pic_x_offset = if is_self_user {
-            ctx.size().width - profile_pic_width
+            total_width - profile_pic_width
         } else {
             0.0
         };
@@ -282,6 +287,16 @@ impl Widget<Message> for TimelineItemWidget {
         } else {
             profile_pic_width + profile_pic_spacing
         };
+
+        // Draw background
+        let content_label_rect = self.msg_content_label.layout_rect();
+        let background_rect = RoundedRect::new(content_label_rect.x0 - MSG_PADDING, content_label_rect.y0 - MSG_PADDING,
+            content_label_rect.x1 + MSG_PADDING, content_label_rect.y1 + MSG_PADDING, 6.0);
+        ctx.fill(background_rect, &(bubble_color));
+
+        // Draw text
+        self.msg_content_label.paint(ctx, data, env);
+        self.sender_name_label.paint(ctx, data, env);
 
         // Next, the profile pic
         let piet_image = {
@@ -325,7 +340,7 @@ impl Widget<Message> for TimelineItemWidget {
             tail_x_center,
             num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape"),
             is_self_user
-        ), &MSG_COLOR);
+        ), &bubble_color);
     }
 
 
