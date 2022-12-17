@@ -85,8 +85,9 @@ impl AppDelegate<AppState> for Delegate {
         self.window_count += 1;
     }
 
-    fn window_removed(&mut self, _id: druid::WindowId, _data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
+    fn window_removed(&mut self, _id: druid::WindowId, data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
         self.window_count -= 1;
+        data.layout_settings.settings_open = false;
         if self.window_count <= 0 {
             println!("All windows closed. Quitting...");
             druid::Application::global().quit();
@@ -101,7 +102,9 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let new_win = WindowDesc::new(build_settings_ui());
+        let settings_size = druid::Size::new(450.0, 500.0);
+        let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
+        new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
     }
 }
@@ -227,10 +230,11 @@ const IMG_SHAPE_OPTIONS: [(&str, PictureShape); 5] =
     ("Hexagon", PictureShape::Hexagon),
     ("Octagon", PictureShape::Octagon),
 ];
-const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 2] =
+const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 3] =
 [
     ("Concave Bottom", TailShape::ConcaveBottom),
     ("Straight", TailShape::Straight),
+    ("Hidden", TailShape::Hidden),
 ];
 
 fn build_settings_ui() -> impl Widget<AppState> {
@@ -319,7 +323,7 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 , 1.0)
                 .with_default_spacer()
                 .with_flex_child(
-                    widget::Slider::new().with_range(0.0, 15.0).with_step(0.1)
+                    widget::Slider::new().with_range(-8.0, 15.0).with_step(0.1)
                     .lens(LayoutSettings::chat_bubble_picture_spacing)
                 , 0.7)
                 .with_flex_child(widget::Label::new(
@@ -363,7 +367,7 @@ fn main() -> Result<(), PlatformError> {
         layout_settings: LayoutSettings {
             settings_open: false,
             picture_shape: PictureShape::Circle,
-            picture_size: 35.0,
+            picture_size: 30.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
             chat_bubble_radius: 5.0,
             chat_bubble_picture_spacing: 3.5,

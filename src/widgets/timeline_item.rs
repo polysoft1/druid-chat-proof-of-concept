@@ -1,4 +1,4 @@
-use druid::kurbo::{Circle, RoundedRect};
+use druid::kurbo::{Circle, RoundedRect, BezPath};
 use druid::widget::prelude::*;
 use druid::{Widget, WidgetExt, widget};
 use druid::piet::{Color, kurbo};
@@ -36,6 +36,7 @@ pub enum PictureShape {
 pub enum TailShape {
     Straight = 0,
     ConcaveBottom,
+    Hidden,
 }
 
 fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPath {
@@ -53,6 +54,9 @@ fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPa
         }
         TailShape::Straight => {
             path.line_to(Point::new(center_x, ARROW_SIZE));
+        },
+        TailShape::Hidden => {
+            return BezPath::default();
         }
     }
 
@@ -336,12 +340,15 @@ impl Widget<Message> for TimelineItemWidget {
             });
         }
         let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
+        let tail_shape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
         // Now the little arrow that goes from the image to the bubble
-        ctx.fill(make_tail_path(
-            tail_x_center,
-            num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape"),
-            is_self_user
-        ), &bubble_color);
+        if tail_shape != TailShape::Hidden {
+            ctx.fill(make_tail_path(
+                tail_x_center,
+                tail_shape,
+                is_self_user
+            ), &bubble_color);
+        }
     }
 
 
