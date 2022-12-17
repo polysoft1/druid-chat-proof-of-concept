@@ -1,3 +1,4 @@
+use chrono::format::Item;
 use druid::kurbo::{Circle, RoundedRect, BezPath};
 use druid::widget::prelude::*;
 use druid::{Widget, WidgetExt, widget};
@@ -272,6 +273,9 @@ impl Widget<Message> for TimelineItemWidget {
         let bubble_radius = env.get(crate::CHAT_BUBBLE_RADIUS_KEY);
         let msg_padding: f64 = env.get(crate::MSG_PADDING_KEY);
         let show_pic = !is_self_user || show_self_pic;
+        let has_bubble = item_layout == ItemLayoutOption::BubbleExternBottomMeta
+        || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
+        || item_layout == ItemLayoutOption::BubbleInternalTopMeta;
         let bubble_color = if is_self_user {
             SELF_MSG_COLOR
         } else {
@@ -311,14 +315,16 @@ impl Widget<Message> for TimelineItemWidget {
         };
 
         // Draw background
-        let content_label_rect = self.msg_content_label.layout_rect();
-        let mut bubble_y1 = content_label_rect.y1 + msg_padding;
-        if item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
-            bubble_y1 += self.sender_name_label.layout_rect().height();
+        if has_bubble {
+            let content_label_rect = self.msg_content_label.layout_rect();
+            let mut bubble_y1 = content_label_rect.y1 + msg_padding;
+            if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
+                bubble_y1 += self.sender_name_label.layout_rect().height();
+            }
+            let background_rect = RoundedRect::new(content_label_rect.x0 - msg_padding, content_label_rect.y0 - msg_padding,
+                content_label_rect.x1 + msg_padding, bubble_y1, bubble_radius);
+            ctx.fill(background_rect, &(bubble_color));
         }
-        let background_rect = RoundedRect::new(content_label_rect.x0 - msg_padding, content_label_rect.y0 - msg_padding,
-            content_label_rect.x1 + msg_padding, bubble_y1, bubble_radius);
-        ctx.fill(background_rect, &(bubble_color));
 
         // Draw text
         self.msg_content_label.paint(ctx, data, env);
@@ -361,15 +367,17 @@ impl Widget<Message> for TimelineItemWidget {
                 );
             });
         }
-        let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
-        let tail_shape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
-        // Now the little arrow that goes from the image to the bubble
-        if tail_shape != TailShape::Hidden {
-            ctx.fill(make_tail_path(
-                tail_x_center,
-                tail_shape,
-                is_self_user
-            ), &bubble_color);
+        if has_bubble {
+            let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
+            let tail_shape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
+            // Now the little arrow that goes from the image to the bubble
+            if tail_shape != TailShape::Hidden {
+                ctx.fill(make_tail_path(
+                    tail_x_center,
+                    tail_shape,
+                    is_self_user
+                ), &bubble_color);
+            }
         }
     }
 
