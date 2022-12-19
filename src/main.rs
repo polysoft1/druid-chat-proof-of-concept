@@ -415,7 +415,7 @@ fn main() -> Result<(), PlatformError> {
             picture_shape: PictureShape::Circle,
             picture_size: 30.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
-            chat_bubble_radius: 5.0,
+            chat_bubble_radius: 4.0,
             chat_bubble_picture_spacing: 3.5,
             show_self_pic: true,
             msg_padding: 5.0,
