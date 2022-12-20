@@ -392,13 +392,15 @@ impl Widget<Message> for TimelineItemWidget {
             } else {
                 self.msg_content_label.layout_rect().y0
             };
+            let mut bubble_x1 = content_label_rect.x1;
 
             let mut bubble_height = content_label_rect.y1 + msg_padding - content_label_rect.y0;
             if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
                 bubble_height += self.sender_name_label.layout_rect().height();
+                bubble_x1 = bubble_x1.max(self.sender_name_label.layout_rect().x1);
             }
             let background_rect = RoundedRect::new(content_label_rect.x0 - msg_padding, bubble_y_origin - msg_padding,
-                content_label_rect.x1 + msg_padding, bubble_y_origin + bubble_height, bubble_radius);
+                bubble_x1 + msg_padding, bubble_y_origin + bubble_height, bubble_radius);
             ctx.fill(background_rect, &(bubble_color));
         }
 
