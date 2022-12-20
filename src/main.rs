@@ -6,7 +6,6 @@ use std::sync;
 use tracing::{error};
 use rand::Rng;
 use std::path::Path;
-use druid::piet::Color;
 use std::env;
 
 mod widgets;
@@ -140,6 +139,62 @@ fn ui_changed_callback(ctx: &mut EventCtx) {
     ctx.submit_command(REFRESH_UI_SELECTOR.to(druid::Target::Global));
 }
 
+fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, settings: &mut LayoutSettings) {
+    match layout {
+        PredefiendLayout::ModernHangouts => {
+            settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 32.0;
+            settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_radius = 4.0;
+            settings.chat_bubble_picture_spacing = 3.5;
+            settings.show_self_pic = false;
+            settings.msg_padding = 5.0;
+        },
+        PredefiendLayout::OldHangouts => {
+            settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
+            settings.picture_shape = PictureShape::Rectangle;
+            settings.picture_size = 32.0;
+            settings.chat_bubble_tail_shape = TailShape::Straight;
+            settings.chat_bubble_radius = 0.5;
+            settings.chat_bubble_picture_spacing = 0.5;
+            settings.show_self_pic = true;
+            settings.msg_padding = 5.0;
+        },
+        PredefiendLayout::Telegram => {
+            settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 30.0;
+            settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_radius = 4.0;
+            settings.chat_bubble_picture_spacing = 3.5;
+            settings.show_self_pic = true;
+            settings.msg_padding = 5.0;
+        },
+        PredefiendLayout::Discord => {
+            settings.item_layout = ItemLayoutOption::Bubbleless;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 38.0;
+            settings.chat_bubble_picture_spacing = 4.0;
+        },
+        PredefiendLayout::Slack => {
+            settings.item_layout = ItemLayoutOption::Bubbleless;
+            settings.picture_shape = PictureShape::RoundedRectangle;
+            settings.picture_size = 38.0;
+            settings.chat_bubble_picture_spacing = 4.0;
+        },
+        PredefiendLayout::IRC => {
+            settings.item_layout = ItemLayoutOption::IRCStyle;
+            settings.picture_shape = PictureShape::Rectangle;
+            settings.picture_size = 19.0;
+            settings.chat_bubble_picture_spacing = 3.5;
+            settings.show_self_pic = true;
+            settings.msg_padding = 3.0;
+        },
+    }
+    ui_changed_callback(ctx);
+}
+
 fn get_chat_window_desc() -> WindowDesc<AppState> {
     let main_window = WindowDesc::new(
         build_chat_ui()
@@ -234,6 +289,17 @@ fn build_chat_ui() -> impl Widget<AppState> {
     )
 }
 
+#[derive(Clone, Copy, PartialEq, druid::Data)]
+pub enum PredefiendLayout {
+    ModernHangouts,
+    OldHangouts,
+    Telegram,
+    Slack,
+    Discord,
+    IRC,
+}
+
+
 const IMG_SHAPE_OPTIONS: [(&str, PictureShape); 5] =
 [
     ("Circle", PictureShape::Circle),
@@ -258,6 +324,71 @@ const LAYOUT_OPTIONS: [(&str, ItemLayoutOption); 5] =
 ];
 
 fn build_settings_ui() -> impl Widget<AppState> {
+    widget::Tabs::new()
+        .with_tab("Layouts", build_predefined_styles_settings().lens(AppState::layout_settings))
+        .with_tab("Advanced", build_advanced_settings().lens(AppState::layout_settings))
+}
+
+fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
+    widget::Flex::column()
+        .with_child(
+            widget::Label::new("Predefined Layouts")
+                .with_text_size(20.0).padding(8.0).align_left()
+        )
+        .with_default_spacer()
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(
+                    widget::Label::new("Layout").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Flex::column()
+                        .with_child(
+                            widget::Button::new("Modern Hangouts")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::ModernHangouts, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Old Fashioned Hangouts")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::OldHangouts, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Telegram")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::Telegram, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Discord")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::Discord, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Slack")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::Slack, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Modern IRC")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::IRC, data);
+                                })
+                        )
+                        .cross_axis_alignment(widget::CrossAxisAlignment::Fill)
+                    , 1.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_flex_child(widget::Label::new("The standard IRC layout only shows when width > 400"), 1.0)
+
+}
+
+fn build_advanced_settings() -> impl Widget<LayoutSettings> {
     widget::Flex::column()
         .with_child(
             widget::Label::new("Layout Settings")
@@ -278,7 +409,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                         .lens(LayoutSettings::item_layout)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(15.0)
         .with_child(
@@ -295,7 +425,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                         .lens(LayoutSettings::picture_shape)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(10.0)
         .with_child(
@@ -314,7 +443,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                     |data: &LayoutSettings, _: &_| {format!("{:1}", data.picture_size)}),
                     0.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(20.0)
         .with_child(widget::Flex::row()
@@ -329,7 +457,7 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .lens(LayoutSettings::show_self_pic)
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-        .lens(AppState::layout_settings))
+        )
         .with_spacer(20.0)
         .with_child(
             widget::Flex::row()
@@ -345,7 +473,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                         .lens(LayoutSettings::chat_bubble_tail_shape)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(10.0)
         .with_child(
@@ -364,7 +491,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_radius)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(10.0)
         .with_child(
@@ -383,7 +509,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_picture_spacing)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(10.0)
         .with_child(
@@ -402,7 +527,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.msg_padding)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-                .lens(AppState::layout_settings)
         )
         .with_spacer(30.0)
         .with_child(
@@ -410,7 +534,6 @@ fn build_settings_ui() -> impl Widget<AppState> {
             .on_click( |ctx: &mut EventCtx, _, _ | {
                 ui_changed_callback(ctx);
             })
-            .lens(AppState::layout_settings)
         )
 }
 
