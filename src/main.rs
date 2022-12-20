@@ -12,6 +12,7 @@ use std::env;
 mod widgets;
 use widgets::timeline_item::{self, PictureShape, TailShape, ItemLayoutOption};
 
+// Env keys to define layout in the environment
 pub const ITEM_LAYOUT_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.item_layout");
 pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.image_shape");
 pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.image_size");
@@ -21,6 +22,9 @@ pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::n
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
 pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
 pub const MSG_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.msg_padding");
+// Commands to communicate things that need to happen
+const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
+
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
@@ -131,8 +135,10 @@ fn on_send_icon_click(_ctx: &mut EventCtx, state: &mut AppState, env: &druid::En
     //state.text_edit
 }
 
-//fn on_pic_shape_change(ctx: &mut EventCtx, state: &mut PictureShape, env: &druid::Env) {
-//}
+fn ui_changed_callback(ctx: &mut EventCtx) {
+    // Signal to all timeline widgets to refresh
+    ctx.submit_command(REFRESH_UI_SELECTOR.to(druid::Target::Global));
+}
 
 fn get_chat_window_desc() -> WindowDesc<AppState> {
     let main_window = WindowDesc::new(
@@ -266,7 +272,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::RadioGroup::column(LAYOUT_OPTIONS)
-                        //.on_click(on_pic_shape_change)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
                         .lens(LayoutSettings::item_layout)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
@@ -281,7 +289,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::RadioGroup::column(IMG_SHAPE_OPTIONS)
-                        //.on_click(on_pic_shape_change)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
                         .lens(LayoutSettings::picture_shape)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
@@ -295,6 +305,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::Slider::new().with_range(10.0, 100.0).with_step(1.0)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
                     .lens(LayoutSettings::picture_size)
                 , 1.0)
                 .with_flex_child(widget::Label::new(
@@ -310,6 +323,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
             .with_default_spacer()
             .with_flex_child(
                 widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
                 .lens(LayoutSettings::show_self_pic)
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
@@ -323,7 +339,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::RadioGroup::column(TAIL_SHAPE_OPTIONS)
-                        //.on_click(on_pic_shape_change)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
                         .lens(LayoutSettings::chat_bubble_tail_shape)
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
@@ -337,6 +355,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
                     .lens(LayoutSettings::chat_bubble_radius)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
@@ -353,6 +374,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::Slider::new().with_range(-8.0, 15.0).with_step(0.1)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
                     .lens(LayoutSettings::chat_bubble_picture_spacing)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
@@ -369,6 +393,9 @@ fn build_settings_ui() -> impl Widget<AppState> {
                 .with_default_spacer()
                 .with_flex_child(
                     widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
                     .lens(LayoutSettings::msg_padding)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
@@ -379,8 +406,11 @@ fn build_settings_ui() -> impl Widget<AppState> {
         )
         .with_spacer(30.0)
         .with_child(
-            widget::Label::new("Shape changes require scroll to take effect\nSize changes require window resize to take effect")
-                .with_text_size(20.0).with_text_color(Color::RED)
+            widget::Button::new("Refresh Window")
+            .on_click( |ctx: &mut EventCtx, _, _ | {
+                ui_changed_callback(ctx);
+            })
+            .lens(AppState::layout_settings)
         )
 }
 

@@ -192,25 +192,33 @@ impl TimelineItemWidget {
 
 impl Widget<Message> for TimelineItemWidget {
 
-    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut Message, _env: &Env) {
-        self.msg_content_label.event(_ctx, _event, _data, _env);
-        self.sender_name_label.event(_ctx, _event, _data, _env);
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Message, env: &Env) {
+        match event {
+            Event::Command(cmd) if cmd.is(crate::REFRESH_UI_SELECTOR) => {
+                ctx.request_layout();
+                ctx.request_paint();
+            }
+            _ => {
+                self.msg_content_label.event(ctx, event, data, env);
+                self.sender_name_label.event(ctx, event, data, env);
+            }
+        }
     }
 
     fn lifecycle(
         &mut self,
-        _ctx: &mut LifeCycleCtx,
-        _event: &LifeCycle,
-        _data: &Message,
-        _env: &Env,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &Message,
+        env: &Env,
     ) {
-        self.msg_content_label.lifecycle(_ctx, _event, _data, _env);
-        self.sender_name_label.lifecycle(_ctx, _event, _data, _env);
+        self.msg_content_label.lifecycle(ctx, event, data, env);
+        self.sender_name_label.lifecycle(ctx, event, data, env);
     }
 
-    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &Message, _data: &Message, _env: &Env) {
-        self.msg_content_label.update(_ctx, _data, _env);
-        self.sender_name_label.update(_ctx, _data, _env);
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Message, data: &Message, env: &Env) {
+        self.msg_content_label.update(ctx, data, env);
+        self.sender_name_label.update(ctx, data, env);
     }
 
     fn layout(
