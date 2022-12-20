@@ -183,6 +183,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 38.0;
             settings.chat_bubble_picture_spacing = 4.0;
         },
+        PredefiendLayout::Compact => {
+            settings.item_layout = ItemLayoutOption::Bubbleless;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 25.0;
+            settings.chat_bubble_picture_spacing = 2.5;
+            settings.show_self_pic = true;
+            settings.msg_padding = 2.0;
+        },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
             settings.picture_shape = PictureShape::Rectangle;
@@ -296,6 +304,7 @@ pub enum PredefiendLayout {
     Telegram,
     Slack,
     Discord,
+    Compact,
     IRC,
 }
 
@@ -372,6 +381,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("Slack")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::Slack, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Compact")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::Compact, data);
                                 })
                         )
                         .with_child(
