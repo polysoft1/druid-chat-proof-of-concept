@@ -174,14 +174,16 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
             settings.picture_shape = PictureShape::Circle;
-            settings.picture_size = 38.0;
-            settings.chat_bubble_picture_spacing = 4.0;
+            settings.picture_size = 40.0;
+            settings.chat_bubble_picture_spacing = 12.0;
+            settings.msg_padding = 7.0
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
             settings.picture_shape = PictureShape::RoundedRectangle;
-            settings.picture_size = 38.0;
-            settings.chat_bubble_picture_spacing = 4.0;
+            settings.picture_size = 36.0;
+            settings.chat_bubble_picture_spacing = 5.5;
+            settings.msg_padding = 5.0
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -194,7 +196,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
             settings.picture_shape = PictureShape::Rectangle;
-            settings.picture_size = 19.0;
+            settings.picture_size = 16.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = true;
             settings.msg_padding = 3.0;
@@ -631,6 +633,14 @@ fn main() -> Result<(), PlatformError> {
     let msg = Message {
         timestamp_epoch_seconds: time,
         message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
+        user_id: user_id,
+        profile_pic: initial_state.profile_pics[user_id as usize].clone(),
+    };
+    initial_state.timeline_data.push_front(msg);
+    let user_id = rng.gen_range(0..5);
+    let msg = Message {
+        timestamp_epoch_seconds: time,
+        message: "Hi".to_string(),
         user_id: user_id,
         profile_pic: initial_state.profile_pics[user_id as usize].clone(),
     };

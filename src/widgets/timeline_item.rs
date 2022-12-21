@@ -15,6 +15,7 @@ use chrono::{ Datelike, TimeZone, Timelike};
 pub struct TimelineItemWidget {
     msg_content_label: WidgetPod<Message, widget::Label<Message>>,
     sender_name_label: WidgetPod<Message, widget::Label<Message>>,
+    datetime_label: WidgetPod<Message, widget::Label<Message>>,
 }
 
 const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
@@ -176,15 +177,20 @@ impl TimelineItemWidget {
             widget::Label::new(|item: &Message, _env: &_| {
                 let mut username = "User".to_string();
                 username.push_str(item.user_id.to_string().as_str());
-                username.push_str(" •");
-                username.push_str(timestamp_to_display_msg(item.timestamp_epoch_seconds, true).as_str());
                 username
+        })
+            .with_line_break_mode(widget::LineBreaking::WordWrap)
+        );
+        let datetime_label = WidgetPod::new(
+            widget::Label::new(|item: &Message, _env: &_| {
+                timestamp_to_display_msg(item.timestamp_epoch_seconds, true).to_string()
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
         );
         Self {
             msg_content_label: msg_content_label,
             sender_name_label: sender_name_label,
+            datetime_label: datetime_label,
         }
     }
 
@@ -214,11 +220,13 @@ impl Widget<Message> for TimelineItemWidget {
     ) {
         self.msg_content_label.lifecycle(ctx, event, data, env);
         self.sender_name_label.lifecycle(ctx, event, data, env);
+        self.datetime_label.lifecycle(ctx, event, data, env);
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Message, data: &Message, env: &Env) {
         self.msg_content_label.update(ctx, data, env);
         self.sender_name_label.update(ctx, data, env);
+        self.datetime_label.update(ctx, data, env);
     }
 
     fn layout(
@@ -254,12 +262,18 @@ impl Widget<Message> for TimelineItemWidget {
             font_descriptor = font_descriptor.with_weight(druid::FontWeight::REGULAR);
             font_descriptor = font_descriptor.with_size(11.0);
             self.sender_name_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
+            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
+            self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
+            self.datetime_label.widget_mut().set_font(font_descriptor);
         } else {
             font_descriptor = font_descriptor.with_weight(druid::FontWeight::SEMI_BOLD);
-            font_descriptor = font_descriptor.with_size(13.0);
             self.sender_name_label.widget_mut().set_text_color(Color::WHITE);
+
+            self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
+            self.datetime_label.widget_mut().set_font(font_descriptor);
+            self.sender_name_label.widget_mut().set_text_size(13.0);
+            self.datetime_label.widget_mut().set_text_size(10.0);
         }
-        self.sender_name_label.widget_mut().set_font(font_descriptor);
 
         // Do the label first since we need to know its size
         let full_width_bounding_box = BoxConstraints::new(
@@ -284,11 +298,17 @@ impl Widget<Message> for TimelineItemWidget {
         };
         // Call layout higher up so we have its size.
         let sender_label_size = self.sender_name_label.layout(layout_ctx, &sender_bounding_box, data, env);
+        let datetime_label_size = self.datetime_label.layout(layout_ctx, &sender_bounding_box, data, env);
+        let total_metadata_width = sender_label_size.width + datetime_label_size.width;
 
         let msg_label_size = self.msg_content_label.layout(layout_ctx, &msg_content_bounding_box, data, env);
         let msg_x_start: f64 = if is_self_user && has_bubble { // Only shift if using a bubble layout
+            let mut bubble_content_width = msg_label_size.width;
+            if item_layout != ItemLayoutOption::BubbleExternBottomMeta {
+                bubble_content_width = bubble_content_width.max(total_metadata_width);
+            }
             // Offset so that the profile pic is pushed all the way to the right
-            bc.max().width - msg_label_size.width - msg_padding * 2.0 - profile_pic_area
+            bc.max().width - bubble_content_width - msg_padding * 2.0 - profile_pic_area
         } else {
             // Push to right of profile pic
             profile_pic_area
@@ -321,7 +341,13 @@ impl Widget<Message> for TimelineItemWidget {
 
         let sender_label_origin: Point = if item_layout == ItemLayoutOption::BubbleExternBottomMeta {
             // Outside the bubble, under it.
-            Point::new(msg_x_start, msg_label_size.height + msg_padding * 2.0)
+            // Do not let it cut off the screen to right if it's self user
+            let metadata_x_start = if is_self_user && total_metadata_width > msg_label_size.width {
+                msg_x_start + msg_label_size.width - total_metadata_width + msg_padding
+            } else {
+                msg_x_start
+            };
+            Point::new(metadata_x_start, msg_label_size.height + msg_padding * 2.0)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
             // Inside the bubble, near the top, offset by just the padding
             Point::new(msg_x_start + msg_padding, msg_padding )
@@ -332,8 +358,12 @@ impl Widget<Message> for TimelineItemWidget {
             // Non-bubble
             Point::new(msg_x_start, 0.0)
         };
+        // Position to right of sender. Also account for differences in height.
+        let datetime_label_origin = Point::new(sender_label_origin.x + sender_label_size.width,
+            sender_label_origin.y + (sender_label_size.height - datetime_label_size.height) * 0.75);
         
         self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
+        self.datetime_label.set_origin(layout_ctx, data, env, datetime_label_origin);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
@@ -395,19 +425,23 @@ impl Widget<Message> for TimelineItemWidget {
         // Draw background
         if has_bubble {
             let content_label_rect = self.msg_content_label.layout_rect();
+            let sender_label_rect = self.sender_name_label.layout_rect();
+            let datetime_label_rect = self.datetime_label.layout_rect();
             let bubble_y_origin = if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
                 self.sender_name_label.layout_rect().y0
             } else {
                 self.msg_content_label.layout_rect().y0
             };
             let mut bubble_x1 = content_label_rect.x1;
+            let mut bubble_x0 = content_label_rect.x0;
 
             let mut bubble_height = content_label_rect.y1 + msg_padding - content_label_rect.y0;
             if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-                bubble_height += self.sender_name_label.layout_rect().height();
-                bubble_x1 = bubble_x1.max(self.sender_name_label.layout_rect().x1);
+                bubble_height += sender_label_rect.height();
+                bubble_x0 = bubble_x0.min(sender_label_rect.x0).min(datetime_label_rect.x0);
+                bubble_x1 = bubble_x1.max(sender_label_rect.x1).max(datetime_label_rect.x1);
             }
-            let background_rect = RoundedRect::new(content_label_rect.x0 - msg_padding, bubble_y_origin - msg_padding,
+            let background_rect = RoundedRect::new(bubble_x0 - msg_padding, bubble_y_origin - msg_padding,
                 bubble_x1 + msg_padding, bubble_y_origin + bubble_height, bubble_radius);
             ctx.fill(background_rect, &(bubble_color));
         }
@@ -415,6 +449,7 @@ impl Widget<Message> for TimelineItemWidget {
         // Draw text
         self.msg_content_label.paint(ctx, data, env);
         self.sender_name_label.paint(ctx, data, env);
+        self.datetime_label.paint(ctx, data, env);
 
         // Next, the profile pic
         let piet_image = {
@@ -430,7 +465,7 @@ impl Widget<Message> for TimelineItemWidget {
                     Some(PictureShape::RoundedRectangle) => {
                         ctx.clip(
                             RoundedRect::new(profile_pic_x_offset, 0.0, 
-                                profile_pic_x_offset + profile_pic_width, profile_pic_width, 6.0)
+                                profile_pic_x_offset + profile_pic_width, profile_pic_width, 4.0)
                         )
                     },
                     Some(PictureShape::Circle) => {
