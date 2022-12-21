@@ -23,6 +23,8 @@ pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("p
 pub const BUBBLE_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_padding");
 pub const METADATA_CONTENT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.metadata_content_padding");
 pub const ITEM_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.item_spacing");
+pub const SHOW_LEFT_LINE_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_left_line");
+pub const LEFT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_spacing");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -48,6 +50,8 @@ struct LayoutSettings {
     bubble_padding: f64,
     metadata_content_spacing: f64,
     item_spacing: f64,
+    show_left_line: bool,
+    left_spacing: f64,
 }
 
 #[derive(Clone, druid::Data)]
@@ -113,7 +117,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(480.0, 760.0);
+        let settings_size = druid::Size::new(480.0, 820.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -156,6 +160,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 4.0;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 6.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -168,6 +174,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 3.0;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -180,6 +188,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 5.0;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -189,6 +199,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 7.0;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 23.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -198,6 +210,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 5.0;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 14.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -208,6 +222,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 7.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
         },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
@@ -217,6 +233,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 3.0;
             settings.bubble_padding = 6.0;
+            settings.show_left_line = true;
+            settings.left_spacing = 4.0;
         },
     }
     ui_changed_callback(ctx);
@@ -313,6 +331,8 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(BUBBLE_PADDING_KEY, data.layout_settings.bubble_padding as f64);
             env.set(METADATA_CONTENT_SPACING_KEY, data.layout_settings.metadata_content_spacing as f64);
             env.set(ITEM_SPACING_KEY, data.layout_settings.item_spacing as f64);
+            env.set(SHOW_LEFT_LINE_KEY, data.layout_settings.show_left_line as bool);
+            env.set(LEFT_SPACING_KEY, data.layout_settings.left_spacing as f64);
         },
         layout
     )
@@ -420,15 +440,24 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                     , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
-        .with_flex_child(widget::Label::new("The standard IRC layout only shows when width > 400"), 1.0)
+        .with_flex_child(widget::Label::new("The standard IRC layout changes when width > 400"), 1.0)
 
 }
 
 fn build_advanced_settings() -> impl Widget<LayoutSettings> {
     widget::Flex::column()
         .with_child(
-            widget::Label::new("Layout Settings")
-                .with_text_size(20.0).padding(8.0).align_left()
+            widget::Flex::row()
+                .with_child(
+                    widget::Label::new("Layout Settings")
+                        .with_text_size(20.0).padding(8.0).align_left()
+                )
+                .with_child(
+                    widget::Button::new("Refresh Window")
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
+                )
         )
         .with_default_spacer()
         .with_child(
@@ -600,12 +629,37 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
-        .with_spacer(30.0)
+        .with_spacer(10.0)
         .with_child(
-            widget::Button::new("Refresh Window")
-            .on_click( |ctx: &mut EventCtx, _, _ | {
-                ui_changed_callback(ctx);
-            })
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Left Spacing:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::left_spacing)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.left_spacing)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Show Left Line:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::show_left_line)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
 }
 
@@ -638,14 +692,16 @@ fn main() -> Result<(), PlatformError> {
             item_layout: ItemLayoutOption::BubbleExternBottomMeta,
             settings_open: false,
             picture_shape: PictureShape::Circle,
-            picture_size: 30.0,
+            picture_size: 32.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
             chat_bubble_radius: 4.0,
             chat_bubble_picture_spacing: 3.5,
             show_self_pic: true,
             bubble_padding: 5.0,
-            metadata_content_spacing: 3.5,
+            metadata_content_spacing: 4.0,
             item_spacing: 6.0,
+            show_left_line: false,
+            left_spacing: 0.0,
         }
     };
 

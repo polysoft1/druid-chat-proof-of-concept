@@ -1,4 +1,4 @@
-use druid::kurbo::{Circle, RoundedRect, BezPath};
+use druid::kurbo::{Circle, RoundedRect, Rect, BezPath};
 use druid::widget::prelude::*;
 use druid::{Widget, widget};
 use druid::piet::{Color, kurbo};
@@ -251,6 +251,7 @@ impl Widget<Message> for TimelineItemWidget {
         let content_bubble_padding: f64 = env.get(crate::BUBBLE_PADDING_KEY);
         let metadata_content_spacing: f64 = env.get(crate::METADATA_CONTENT_SPACING_KEY);
         let profile_pic_bubble_spacing: f64 = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
+        let content_left_spacing: f64 = env.get(crate::LEFT_SPACING_KEY);
         let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
         let is_side_by_side = item_layout == ItemLayoutOption::IRCStyle && bc.max().width > IRC_STACK_WIDTH;
 
@@ -281,14 +282,14 @@ impl Widget<Message> for TimelineItemWidget {
             Size::new(0.0, 0.0),
             Size::new(bc.max().width - profile_pic_area - 2.0 * content_bubble_padding, bc.max().height)
         );
-        let msg_content_bounding_box = if is_side_by_side {
-            BoxConstraints::new(
-                Size::new(0.0, 0.0),
-                Size::new(0.0f64.max(bc.max().width - IRC_HEADER_WIDTH), bc.max().height)
-            )
-        } else {
-            full_width_bounding_box.clone()
-        };
+        let msg_content_bounding_box = BoxConstraints::new(
+            Size::new(0.0, 0.0),
+            if is_side_by_side {
+                Size::new(0.0f64.max(full_width_bounding_box.max().width - IRC_HEADER_WIDTH - content_left_spacing), bc.max().height)
+            } else {
+                Size::new(0.0f64.max(full_width_bounding_box.max().width - content_left_spacing), bc.max().height)
+            }
+        );
         let sender_bounding_box = if is_side_by_side {
             BoxConstraints::new(
                 Size::new(0.0, 0.0),
@@ -314,27 +315,28 @@ impl Widget<Message> for TimelineItemWidget {
             // Push to right of profile pic
             profile_pic_area
         };
+        let content_x_start = content_left_spacing + msg_x_start;
         let msg_content_origin = if has_bottom_metadata {
-            Point::new(msg_x_start + content_bubble_padding, content_bubble_padding)
+            Point::new(content_x_start + content_bubble_padding, content_bubble_padding)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            Point::new(msg_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing)
+            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing)
         } else if item_layout == ItemLayoutOption::IRCStyle{
             // Allow having msg and name on same axis if wide enough
             // else stack them
             if is_side_by_side {
                 // The msg content is to the right of the metadata
-                Point::new(IRC_HEADER_WIDTH + content_bubble_padding, 0.0)
+                Point::new(content_left_spacing + IRC_HEADER_WIDTH + content_bubble_padding, 0.0)
             } else {
                 // Stacked, with no room for picture, since this is the most compact layout
-                Point::new(0.0, metadata_content_spacing + sender_label_size.height)
+                Point::new(content_left_spacing, metadata_content_spacing + sender_label_size.height)
             }
         } else {
             // Allow text to move all the way to left if the picture's size
             // is less than the height of the meta label
             if profile_pic_width - 5.0 < sender_label_size.height {
-                Point::new(0.0, metadata_content_spacing + sender_label_size.height)
+                Point::new(0.0, content_left_spacing + metadata_content_spacing + sender_label_size.height)
             } else {
-                Point::new(msg_x_start, metadata_content_spacing + sender_label_size.height)
+                Point::new(content_x_start, metadata_content_spacing + sender_label_size.height)
             }
         };
 
@@ -389,6 +391,8 @@ impl Widget<Message> for TimelineItemWidget {
             || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
             || item_layout == ItemLayoutOption::BubbleInternalTopMeta;
         let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
+        let show_left_line = env.get(crate::SHOW_LEFT_LINE_KEY);
+        let content_left_line_spacing = env.get(crate::LEFT_SPACING_KEY);
         let bubble_radius = env.get(crate::CHAT_BUBBLE_RADIUS_KEY);
         let content_bubble_padding: f64 = env.get(crate::BUBBLE_PADDING_KEY);
         let metadata_content_spacing: f64 = env.get(crate::METADATA_CONTENT_SPACING_KEY);
@@ -431,9 +435,9 @@ impl Widget<Message> for TimelineItemWidget {
             profile_pic_width + profile_pic_spacing
         };
 
+        let content_label_rect = self.msg_content_label.layout_rect();
         // Draw background
         if has_bubble {
-            let content_label_rect = self.msg_content_label.layout_rect();
             let sender_label_rect = self.sender_name_label.layout_rect();
             let datetime_label_rect = self.datetime_label.layout_rect();
             let bubble_y_origin = if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
@@ -441,8 +445,8 @@ impl Widget<Message> for TimelineItemWidget {
             } else {
                 self.msg_content_label.layout_rect().y0
             };
+            let mut bubble_x0 = content_label_rect.x0 - content_left_line_spacing;
             let mut bubble_x1 = content_label_rect.x1;
-            let mut bubble_x0 = content_label_rect.x0;
 
             let mut unpadded_bubble_height = content_label_rect.y1 - content_label_rect.y0;
             if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
@@ -509,6 +513,12 @@ impl Widget<Message> for TimelineItemWidget {
                     is_self_user
                 ), &bubble_color);
             }
+        }
+        // Now draw the line to left of content, if enabled
+        if show_left_line {
+            let line_x0 = content_label_rect.x0 - content_left_line_spacing;
+            let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 2.0, content_label_rect.y1);
+            ctx.fill(line_rect, &Color::GRAY);
         }
     }
 
