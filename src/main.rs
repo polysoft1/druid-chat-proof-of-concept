@@ -20,7 +20,9 @@ pub const CHAT_BUBBLE_RADIUS_KEY: druid::env::Key<f64> = druid::env::Key::new("p
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
 pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
-pub const MSG_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.msg_padding");
+pub const BUBBLE_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_padding");
+pub const METADATA_CONTENT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.metadata_content_padding");
+pub const ITEM_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.item_spacing");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -43,7 +45,9 @@ struct LayoutSettings {
     chat_bubble_radius: f64,
     chat_bubble_picture_spacing: f64,
     show_self_pic: bool,
-    msg_padding: f64,
+    bubble_padding: f64,
+    metadata_content_spacing: f64,
+    item_spacing: f64,
 }
 
 #[derive(Clone, druid::Data)]
@@ -149,7 +153,9 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_radius = 4.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
-            settings.msg_padding = 5.0;
+            settings.metadata_content_spacing = 4.0;
+            settings.bubble_padding = 5.0;
+            settings.item_spacing = 6.0;
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -159,7 +165,9 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_radius = 0.5;
             settings.chat_bubble_picture_spacing = 0.5;
             settings.show_self_pic = true;
-            settings.msg_padding = 5.0;
+            settings.metadata_content_spacing = 3.0;
+            settings.bubble_padding = 5.0;
+            settings.item_spacing = 9.5;
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -169,21 +177,27 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_radius = 4.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = true;
-            settings.msg_padding = 5.0;
+            settings.metadata_content_spacing = 5.0;
+            settings.bubble_padding = 5.0;
+            settings.item_spacing = 9.5;
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 40.0;
-            settings.chat_bubble_picture_spacing = 12.0;
-            settings.msg_padding = 7.0
+            settings.chat_bubble_picture_spacing = 13.0;
+            settings.metadata_content_spacing = 7.0;
+            settings.bubble_padding = 0.0;
+            settings.item_spacing = 23.0;
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
             settings.picture_shape = PictureShape::RoundedRectangle;
             settings.picture_size = 36.0;
             settings.chat_bubble_picture_spacing = 5.5;
-            settings.msg_padding = 5.0
+            settings.metadata_content_spacing = 5.0;
+            settings.bubble_padding = 0.0;
+            settings.item_spacing = 14.0;
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -191,7 +205,9 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 25.0;
             settings.chat_bubble_picture_spacing = 2.5;
             settings.show_self_pic = true;
-            settings.msg_padding = 2.0;
+            settings.metadata_content_spacing = 2.0;
+            settings.bubble_padding = 0.0;
+            settings.item_spacing = 7.0;
         },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
@@ -199,7 +215,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 16.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = true;
-            settings.msg_padding = 3.0;
+            settings.metadata_content_spacing = 3.0;
+            settings.bubble_padding = 6.0;
         },
     }
     ui_changed_callback(ctx);
@@ -265,7 +282,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
         widget::List::new( move || {
             timeline_item::TimelineItemWidget::new()
         })
-        .with_spacing(6.0)
+        .with_spacing(ITEM_SPACING_KEY)
         .padding(5.0)
     )
     .vertical()
@@ -293,7 +310,9 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(CHAT_BUBBLE_RADIUS_KEY, data.layout_settings.chat_bubble_radius as f64);
             env.set(CHAT_BUBBLE_IMG_SPACING_KEY, data.layout_settings.chat_bubble_picture_spacing as f64);
             env.set(SHOW_SELF_PROFILE_PIC, data.layout_settings.show_self_pic);
-            env.set(MSG_PADDING_KEY, data.layout_settings.msg_padding as f64);
+            env.set(BUBBLE_PADDING_KEY, data.layout_settings.bubble_padding as f64);
+            env.set(METADATA_CONTENT_SPACING_KEY, data.layout_settings.metadata_content_spacing as f64);
+            env.set(ITEM_SPACING_KEY, data.layout_settings.item_spacing as f64);
         },
         layout
     )
@@ -530,7 +549,7 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
         .with_spacer(10.0)
         .with_child(
             widget::Flex::row()
-                .with_flex_child(widget::Label::new("Msg Padding:").align_right()
+                .with_flex_child(widget::Label::new("Bubble Padding:").align_right()
                 , 0.7)
                 .with_default_spacer()
                 .with_flex_child(
@@ -538,10 +557,46 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
-                    .lens(LayoutSettings::msg_padding)
+                    .lens(LayoutSettings::bubble_padding)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
-                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.msg_padding)}),
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.bubble_padding)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Content Spacing:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::metadata_content_spacing)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.metadata_content_spacing)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("List Spacing:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 28.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::item_spacing)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.item_spacing)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -588,7 +643,9 @@ fn main() -> Result<(), PlatformError> {
             chat_bubble_radius: 4.0,
             chat_bubble_picture_spacing: 3.5,
             show_self_pic: true,
-            msg_padding: 5.0,
+            bubble_padding: 5.0,
+            metadata_content_spacing: 3.5,
+            item_spacing: 6.0,
         }
     };
 
