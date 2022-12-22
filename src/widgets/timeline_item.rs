@@ -50,21 +50,22 @@ pub enum ItemLayoutOption {
     IRCStyle,
 }
 
-fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPath {
+fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool, flip_y: bool) -> kurbo::BezPath {
     let x_translation = if flip_x { -1.0 } else { 1.0 };
+    let y_translation = if flip_y { -1.0 } else { 1.0 };
     let mut path = kurbo::BezPath::new();
-    path.move_to(Point::new(center_x, -0.1)); // Start
-    path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, -0.2)); // towards picture
+    path.move_to(Point::new(center_x, y_position + -0.1 * y_translation)); // Start
+    path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation)); // towards picture
     // Now to low point. + is down
     match shape {
         TailShape::ConcaveBottom => {
             path.quad_to(
-                Point::new(center_x - ARROW_SIZE/4.0 * x_translation, ARROW_SIZE/4.0),
-                Point::new(center_x, ARROW_SIZE * 1.3),
+                Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
+                Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
             );
         }
         TailShape::Straight => {
-            path.line_to(Point::new(center_x, ARROW_SIZE));
+            path.line_to(Point::new(center_x, y_position + ARROW_SIZE * y_translation));
         },
         TailShape::Hidden => {
             return BezPath::default();
@@ -72,8 +73,8 @@ fn make_tail_path(center_x: f64, shape: TailShape, flip_x: bool) -> kurbo::BezPa
     }
 
     // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
-    path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, 0.2));
-    path.line_to(Point::new(center_x, -0.1));
+    path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position + 0.2));
+    path.line_to(Point::new(center_x, y_position + -0.1));
     path.close_path();
     path
 }
@@ -237,6 +238,13 @@ impl Widget<Message> for TimelineItemWidget {
         env: &Env,
     ) -> Size {
         let is_self_user: bool = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let left_bubble_flipped: bool = env.get(crate::LEFT_BUBBLE_FLIPPED_KEY);
+        let right_bubble_flipped: bool = env.get(crate::RIGHT_BUBBLE_FLIPPED_KEY);
+        let is_bubble_flipped = if is_self_user {
+            right_bubble_flipped
+        } else {
+            left_bubble_flipped
+        };
         let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
         let has_bubble = item_layout == ItemLayoutOption::BubbleExternBottomMeta
             || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
@@ -298,12 +306,28 @@ impl Widget<Message> for TimelineItemWidget {
         } else {
             full_width_bounding_box.clone()
         };
-        // Call layout higher up so we have its size.
+        // Call layout higher up so we have their sizes.
         let sender_label_size = self.sender_name_label.layout(layout_ctx, &sender_bounding_box, data, env);
         let datetime_label_size = self.datetime_label.layout(layout_ctx, &sender_bounding_box, data, env);
+        let msg_label_size = self.msg_content_label.layout(layout_ctx, &msg_content_bounding_box, data, env);
         let total_metadata_width = sender_label_size.width + datetime_label_size.width;
 
-        let msg_label_size = self.msg_content_label.layout(layout_ctx, &msg_content_bounding_box, data, env);
+        // Offset in the case of tiny flipped bubbles with tails, since tiny
+        // messages cause the tail to not align with the picture properly
+        let y_top_offset = if has_bubble && is_bubble_flipped {
+            let mut space_taken = 2.0 * content_bubble_padding + msg_label_size.height;
+            if item_layout != ItemLayoutOption::BubbleExternBottomMeta {
+                space_taken += sender_label_size.height + metadata_content_spacing
+            };
+            if space_taken >= profile_pic_width {
+                0.0
+            } else {
+                profile_pic_width - space_taken
+            }
+        } else {
+            0.0
+        };
+
         let msg_x_start: f64 = if is_self_user && has_bubble { // Only shift if using a bubble layout
             let mut bubble_content_width = msg_label_size.width;
             if item_layout != ItemLayoutOption::BubbleExternBottomMeta {
@@ -317,26 +341,26 @@ impl Widget<Message> for TimelineItemWidget {
         };
         let content_x_start = content_left_spacing + msg_x_start;
         let msg_content_origin = if has_bottom_metadata {
-            Point::new(content_x_start + content_bubble_padding, content_bubble_padding)
+            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing)
+            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing + y_top_offset)
         } else if item_layout == ItemLayoutOption::IRCStyle{
             // Allow having msg and name on same axis if wide enough
             // else stack them
             if is_side_by_side {
                 // The msg content is to the right of the metadata
-                Point::new(content_left_spacing + IRC_HEADER_WIDTH + content_bubble_padding, 0.0)
+                Point::new(content_left_spacing + IRC_HEADER_WIDTH + content_bubble_padding, y_top_offset)
             } else {
                 // Stacked, with no room for picture, since this is the most compact layout
-                Point::new(content_left_spacing, metadata_content_spacing + sender_label_size.height)
+                Point::new(content_left_spacing, metadata_content_spacing + sender_label_size.height + y_top_offset)
             }
         } else {
             // Allow text to move all the way to left if the picture's size
             // is less than the height of the meta label
             if profile_pic_width - 5.0 < sender_label_size.height {
-                Point::new(0.0, content_left_spacing + metadata_content_spacing + sender_label_size.height)
+                Point::new(0.0, content_left_spacing + metadata_content_spacing + sender_label_size.height + y_top_offset)
             } else {
-                Point::new(content_x_start, metadata_content_spacing + sender_label_size.height)
+                Point::new(content_x_start, metadata_content_spacing + sender_label_size.height + y_top_offset)
             }
         };
 
@@ -351,14 +375,14 @@ impl Widget<Message> for TimelineItemWidget {
                 msg_x_start
             };
             Point::new(metadata_x_start, msg_label_size.height
-                + metadata_content_spacing * 2.0 + metadata_content_spacing)
+                + metadata_content_spacing * 2.0 + metadata_content_spacing + y_top_offset)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
             // Inside the bubble, near the top, offset by just the padding
-            Point::new(msg_x_start + content_bubble_padding, content_bubble_padding )
+            Point::new(msg_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)
         } else if item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
             // Near the bottom of the bubble, but inside it. Offset by padding.
             Point::new(msg_x_start + content_bubble_padding, 
-                msg_label_size.height + content_bubble_padding + metadata_content_spacing)
+                msg_label_size.height + content_bubble_padding + metadata_content_spacing + y_top_offset)
         } else {
             // Non-bubble
             Point::new(msg_x_start, 0.0)
@@ -373,9 +397,9 @@ impl Widget<Message> for TimelineItemWidget {
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
         let total_height = if is_side_by_side {
-            sender_label_size.height.max(msg_label_size.height)
+            sender_label_size.height.max(msg_label_size.height) + y_top_offset
         } else {
-            msg_label_size.height + sender_label_size.height + metadata_content_spacing + if has_bubble {
+            y_top_offset + msg_label_size.height + sender_label_size.height + metadata_content_spacing + if has_bubble {
                 2.0 * content_bubble_padding
             } else {
                 0.0
@@ -386,6 +410,13 @@ impl Widget<Message> for TimelineItemWidget {
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
+        let left_bubble_flipped: bool = env.get(crate::LEFT_BUBBLE_FLIPPED_KEY);
+        let right_bubble_flipped: bool = env.get(crate::RIGHT_BUBBLE_FLIPPED_KEY);
+        let is_bubble_flipped = if is_self_user {
+            right_bubble_flipped
+        } else {
+            left_bubble_flipped
+        };
         let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
         let has_bubble = item_layout == ItemLayoutOption::BubbleExternBottomMeta
             || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
@@ -436,27 +467,28 @@ impl Widget<Message> for TimelineItemWidget {
         };
 
         let content_label_rect = self.msg_content_label.layout_rect();
+        let sender_label_rect = self.sender_name_label.layout_rect();
+        let datetime_label_rect = self.datetime_label.layout_rect();
+        let bubble_y_origin = if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
+            self.sender_name_label.layout_rect().y0
+        } else {
+            self.msg_content_label.layout_rect().y0
+        };
+        let mut bubble_x0 = content_label_rect.x0 - content_left_line_spacing;
+        let mut bubble_x1 = content_label_rect.x1;
+
+        let mut unpadded_bubble_height = content_label_rect.y1 - content_label_rect.y0;
+        if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
+            unpadded_bubble_height += sender_label_rect.height();
+            unpadded_bubble_height += metadata_content_spacing;
+            bubble_x0 = bubble_x0.min(sender_label_rect.x0).min(datetime_label_rect.x0);
+            bubble_x1 = bubble_x1.max(sender_label_rect.x1).max(datetime_label_rect.x1);
+        }
+        let bubble_y1 = bubble_y_origin + unpadded_bubble_height + content_bubble_padding;
         // Draw background
         if has_bubble {
-            let sender_label_rect = self.sender_name_label.layout_rect();
-            let datetime_label_rect = self.datetime_label.layout_rect();
-            let bubble_y_origin = if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-                self.sender_name_label.layout_rect().y0
-            } else {
-                self.msg_content_label.layout_rect().y0
-            };
-            let mut bubble_x0 = content_label_rect.x0 - content_left_line_spacing;
-            let mut bubble_x1 = content_label_rect.x1;
-
-            let mut unpadded_bubble_height = content_label_rect.y1 - content_label_rect.y0;
-            if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-                unpadded_bubble_height += sender_label_rect.height();
-                unpadded_bubble_height += metadata_content_spacing;
-                bubble_x0 = bubble_x0.min(sender_label_rect.x0).min(datetime_label_rect.x0);
-                bubble_x1 = bubble_x1.max(sender_label_rect.x1).max(datetime_label_rect.x1);
-            }
             let background_rect = RoundedRect::new(bubble_x0 - content_bubble_padding, bubble_y_origin - content_bubble_padding,
-                bubble_x1 + content_bubble_padding, bubble_y_origin + unpadded_bubble_height + content_bubble_padding, bubble_radius);
+                bubble_x1 + content_bubble_padding, bubble_y1, bubble_radius);
             ctx.fill(background_rect, &(bubble_color));
         }
 
@@ -473,7 +505,11 @@ impl Widget<Message> for TimelineItemWidget {
         if show_pic {
             ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
                 let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
-                let pic_y_offset = 0.3; // For preventing some of the profile pic from showing over the tail
+                let pic_y_offset = if is_bubble_flipped && has_bubble {
+                    0.0f64.max(bubble_y1 - profile_pic_width) - 0.3
+                } else {
+                    0.3 // For preventing some of the profile pic from showing over the tail
+                };
                 match num_traits::FromPrimitive::from_u64(shape_as_int) {
                     Some(PictureShape::Rectangle) => {},
                     Some(PictureShape::RoundedRectangle) => {
@@ -502,15 +538,23 @@ impl Widget<Message> for TimelineItemWidget {
                 );
             });
         }
+        // Now the little arrow/tail that goes from the image to the bubble
         if has_bubble {
             let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
-            let tail_shape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
-            // Now the little arrow that goes from the image to the bubble
+            let tail_shape: TailShape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
+            let tail_y_position = if is_bubble_flipped {
+                bubble_y1
+            } else {
+                0.0
+            };
+            
             if tail_shape != TailShape::Hidden {
                 ctx.fill(make_tail_path(
                     tail_x_center,
+                    tail_y_position,
                     tail_shape,
-                    is_self_user
+                    is_self_user,
+                    is_bubble_flipped
                 ), &bubble_color);
             }
         }

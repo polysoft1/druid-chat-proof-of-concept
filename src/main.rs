@@ -25,6 +25,8 @@ pub const METADATA_CONTENT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::
 pub const ITEM_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.item_spacing");
 pub const SHOW_LEFT_LINE_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_left_line");
 pub const LEFT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_spacing");
+pub const LEFT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.left_bubble_flipped");
+pub const RIGHT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.right_bubble_flipped");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -52,6 +54,8 @@ struct LayoutSettings {
     item_spacing: f64,
     show_left_line: bool,
     left_spacing: f64,
+    left_bubble_flipped: bool,
+    right_bubble_flipped: bool,
 }
 
 #[derive(Clone, druid::Data)]
@@ -117,7 +121,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(480.0, 820.0);
+        let settings_size = druid::Size::new(480.0, 860.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -162,6 +166,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 6.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -176,20 +182,24 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 9.5;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
             settings.picture_shape = PictureShape::Circle;
-            settings.picture_size = 30.0;
+            settings.picture_size = 32.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
             settings.chat_bubble_radius = 4.0;
-            settings.chat_bubble_picture_spacing = 3.5;
-            settings.show_self_pic = true;
+            settings.chat_bubble_picture_spacing = 8.0;
+            settings.show_self_pic = false;
             settings.metadata_content_spacing = 5.0;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = true;
+            settings.right_bubble_flipped = true;
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -232,6 +242,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 3.0;
+            settings.item_spacing = 6.0;
             settings.bubble_padding = 6.0;
             settings.show_left_line = true;
             settings.left_spacing = 4.0;
@@ -333,6 +344,8 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(ITEM_SPACING_KEY, data.layout_settings.item_spacing as f64);
             env.set(SHOW_LEFT_LINE_KEY, data.layout_settings.show_left_line as bool);
             env.set(LEFT_SPACING_KEY, data.layout_settings.left_spacing as f64);
+            env.set(LEFT_BUBBLE_FLIPPED_KEY, data.layout_settings.left_bubble_flipped as bool);
+            env.set(RIGHT_BUBBLE_FLIPPED_KEY, data.layout_settings.right_bubble_flipped as bool);
         },
         layout
     )
@@ -558,6 +571,34 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
         .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Flip left bubble:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::left_bubble_flipped)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Flip right/self bubble:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::right_bubble_flipped)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
         .with_child(
             widget::Flex::row()
                 .with_flex_child(widget::Label::new("Profile Pic Spacing:").align_right()
@@ -702,6 +743,8 @@ fn main() -> Result<(), PlatformError> {
             item_spacing: 6.0,
             show_left_line: false,
             left_spacing: 0.0,
+            left_bubble_flipped: false,
+            right_bubble_flipped: true,
         }
     };
 
