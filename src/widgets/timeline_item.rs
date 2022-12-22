@@ -376,7 +376,7 @@ impl Widget<Message> for TimelineItemWidget {
                 msg_x_start
             };
             Point::new(metadata_x_start, msg_label_size.height
-                + metadata_content_spacing * 2.0 + metadata_content_spacing + y_top_offset)
+                + content_bubble_padding * 2.0 + metadata_content_spacing + y_top_offset)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
             // Inside the bubble, near the top, offset by just the padding
             Point::new(msg_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)

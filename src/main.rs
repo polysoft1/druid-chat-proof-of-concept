@@ -171,7 +171,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_radius = 4.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
-            settings.metadata_content_spacing = 4.0;
+            settings.metadata_content_spacing = 1.0;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 6.0;
             settings.show_left_line = false;
@@ -649,7 +649,7 @@ fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
                 , 0.7)
                 .with_default_spacer()
                 .with_flex_child(
-                    widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    widget::Slider::new().with_range(0.0, 12.0).with_step(0.5)
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
@@ -695,7 +695,7 @@ fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
                 , 0.7)
                 .with_default_spacer()
                 .with_flex_child(
-                    widget::Slider::new().with_range(0.0, 10.0).with_step(0.5)
+                    widget::Slider::new().with_range(0.0, 15.0).with_step(0.5)
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
@@ -737,7 +737,7 @@ fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
                 , 0.7)
                 .with_default_spacer()
                 .with_flex_child(
-                    widget::Slider::new().with_range(-8.0, 15.0).with_step(0.1)
+                    widget::Slider::new().with_range(-15.0, 20.0).with_step(0.5)
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
@@ -934,7 +934,7 @@ fn main() -> Result<(), PlatformError> {
             chat_bubble_picture_spacing: 3.5,
             show_self_pic: true,
             bubble_padding: 5.0,
-            metadata_content_spacing: 4.0,
+            metadata_content_spacing: 1.0,
             item_spacing: 6.0,
             show_left_line: false,
             left_spacing: 0.0,
