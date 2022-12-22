@@ -27,6 +27,10 @@ pub const SHOW_LEFT_LINE_KEY: druid::env::Key<bool> = druid::env::Key::new("poly
 pub const LEFT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_spacing");
 pub const LEFT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.left_bubble_flipped");
 pub const RIGHT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.right_bubble_flipped");
+pub const SENDER_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.sender_font_size");
+pub const CONTENT_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.content_font_size");
+pub const DATETIME_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.datetime_font_size");
+pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.header_font_bolded");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -56,6 +60,10 @@ struct LayoutSettings {
     left_spacing: f64,
     left_bubble_flipped: bool,
     right_bubble_flipped: bool,
+    content_font_size: f64,
+    sender_font_size: f64,
+    datetime_font_size: f64,
+    header_font_bolded: bool,
 }
 
 #[derive(Clone, druid::Data)]
@@ -121,7 +129,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(480.0, 860.0);
+        let settings_size = druid::Size::new(1300.0, 500.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -168,11 +176,15 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
+            settings.header_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 11.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
             settings.picture_shape = PictureShape::Rectangle;
-            settings.picture_size = 32.0;
+            settings.picture_size = 35.0;
             settings.chat_bubble_tail_shape = TailShape::Straight;
             settings.chat_bubble_radius = 0.5;
             settings.chat_bubble_picture_spacing = 0.5;
@@ -184,6 +196,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
+            settings.header_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 10.0;
+            settings.datetime_font_size = 10.0;
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -200,6 +216,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = true;
             settings.right_bubble_flipped = true;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 12.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::OtherBubble => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -216,6 +236,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 14.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -227,6 +251,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 23.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 14.0;
+            settings.sender_font_size = 14.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::CompactDiscord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -238,6 +266,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 13.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -249,6 +281,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 14.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -261,6 +297,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.item_spacing = 7.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
+            settings.header_font_bolded = true;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
         },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
@@ -273,6 +313,10 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.bubble_padding = 6.0;
             settings.show_left_line = true;
             settings.left_spacing = 4.0;
+            settings.header_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
         },
     }
     ui_changed_callback(ctx);
@@ -373,6 +417,10 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(LEFT_SPACING_KEY, data.layout_settings.left_spacing as f64);
             env.set(LEFT_BUBBLE_FLIPPED_KEY, data.layout_settings.left_bubble_flipped as bool);
             env.set(RIGHT_BUBBLE_FLIPPED_KEY, data.layout_settings.right_bubble_flipped as bool);
+            env.set(CONTENT_FONT_SIZE_KEY, data.layout_settings.content_font_size as f64);
+            env.set(SENDER_FONT_SIZE_KEY, data.layout_settings.sender_font_size as f64);
+            env.set(DATETIME_FONT_SIZE_KEY, data.layout_settings.datetime_font_size as f64);
+            env.set(HEADER_FONT_BOLDED_KEY, data.layout_settings.header_font_bolded as bool);
         },
         layout
     )
@@ -498,22 +546,8 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
 
 }
 
-fn build_advanced_settings() -> impl Widget<LayoutSettings> {
+fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
     widget::Flex::column()
-        .with_child(
-            widget::Flex::row()
-                .with_child(
-                    widget::Label::new("Layout Settings")
-                        .with_text_size(20.0).padding(8.0).align_left()
-                )
-                .with_child(
-                    widget::Button::new("Refresh Window")
-                        .on_click( |ctx: &mut EventCtx, _, _ | {
-                            ui_changed_callback(ctx);
-                        })
-                )
-        )
-        .with_default_spacer()
         .with_child(
             widget::Flex::row()
                 .with_flex_child(
@@ -577,7 +611,10 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
-        .with_spacer(20.0)
+}
+
+fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
+    widget::Flex::column()
         .with_child(
             widget::Flex::row()
                 .with_flex_child(
@@ -627,7 +664,7 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
         )
         .with_spacer(10.0)
         .with_child(widget::Flex::row()
-            .with_flex_child(widget::Label::new("Flip right/self bubble:").align_right()
+            .with_flex_child(widget::Label::new("Flip right bubble:").align_right()
             , 0.7)
             .with_default_spacer()
             .with_flex_child(
@@ -638,24 +675,6 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
                 .lens(LayoutSettings::right_bubble_flipped)
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-        )
-        .with_spacer(10.0)
-        .with_child(
-            widget::Flex::row()
-                .with_flex_child(widget::Label::new("Profile Pic Spacing:").align_right()
-                , 0.7)
-                .with_default_spacer()
-                .with_flex_child(
-                    widget::Slider::new().with_range(-8.0, 15.0).with_step(0.1)
-                    .on_click( |ctx: &mut EventCtx, _, _ | {
-                        ui_changed_callback(ctx);
-                    })
-                    .lens(LayoutSettings::chat_bubble_picture_spacing)
-                , 0.9)
-                .with_flex_child(widget::Label::new(
-                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_picture_spacing)}),
-                    0.4)
-                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
         .with_spacer(10.0)
         .with_child(
@@ -672,6 +691,28 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
                 , 0.9)
                 .with_flex_child(widget::Label::new(
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.bubble_padding)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+
+}
+
+fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
+    widget::Flex::column()
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Profile Pic Spacing:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(-8.0, 15.0).with_step(0.1)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::chat_bubble_picture_spacing)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_picture_spacing)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -743,6 +784,87 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Content Font Size:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Stepper::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::content_font_size)
+            , 0.9)
+            .with_flex_child(
+                widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.content_font_size)})
+            , 0.4)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Sender Font Size:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Stepper::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::sender_font_size)
+            , 0.9)
+            .with_flex_child(
+                widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.sender_font_size)})
+            , 0.4)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Datetime Font Size:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Stepper::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::datetime_font_size)
+            , 0.9)
+            .with_flex_child(
+                widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.datetime_font_size)})
+            , 0.4)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+}
+
+
+fn build_advanced_settings() -> impl Widget<LayoutSettings> {
+    widget::Flex::column()
+        .with_child(
+            widget::Flex::row()
+                .with_child(
+                    widget::Label::new("Layout Settings")
+                        .with_text_size(20.0).padding(8.0).align_left()
+                )
+                .with_child(
+                    widget::Button::new("Refresh Window")
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
+                )
+        )
+        .with_default_spacer()
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(build_advanced_layout_settings(), 1.5)
+                .with_flex_child(build_advanced_bubble_settings(), 1.0)
+                .with_flex_child(build_advanced_sizing_settings(), 1.0)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        
 }
 
 fn get_self_user_from_args() -> u64 {
@@ -786,6 +908,10 @@ fn main() -> Result<(), PlatformError> {
             left_spacing: 0.0,
             left_bubble_flipped: false,
             right_bubble_flipped: true,
+            content_font_size: 13.0,
+            sender_font_size: 11.0,
+            datetime_font_size: 11.0,
+            header_font_bolded: false,
         }
     };
 

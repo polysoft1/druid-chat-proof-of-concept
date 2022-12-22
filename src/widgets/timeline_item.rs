@@ -173,7 +173,8 @@ impl TimelineItemWidget {
         let msg_content_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .with_text_size(13.0));
+                .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
+            );
         let sender_name_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| {
                 let mut username = "User".to_string();
@@ -181,12 +182,14 @@ impl TimelineItemWidget {
                 username
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
+            .with_text_size(crate::SENDER_FONT_SIZE_KEY)
         );
         let datetime_label = WidgetPod::new(
             widget::Label::new(|item: &Message, _env: &_| {
                 timestamp_to_display_msg(item.timestamp_epoch_seconds, true).to_string()
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
+            .with_text_size(crate::DATETIME_FONT_SIZE_KEY)
         );
         Self {
             msg_content_label: msg_content_label,
@@ -262,27 +265,22 @@ impl Widget<Message> for TimelineItemWidget {
         let content_left_spacing: f64 = env.get(crate::LEFT_SPACING_KEY);
         let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
         let is_side_by_side = item_layout == ItemLayoutOption::IRCStyle && bc.max().width > IRC_STACK_WIDTH;
+        let font_bolded = env.get(crate::HEADER_FONT_BOLDED_KEY);
 
         // Ensure proper font size is used
         let has_bottom_metadata = item_layout == ItemLayoutOption::BubbleExternBottomMeta
             || item_layout == ItemLayoutOption::BubbleInternalBottomMeta;
 
         let mut font_descriptor = druid::FontDescriptor::new(druid::FontFamily::SYSTEM_UI);
+        font_descriptor = font_descriptor.with_weight( if font_bolded { druid::FontWeight::SEMI_BOLD } else { druid::FontWeight::REGULAR });
+        self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
+        self.datetime_label.widget_mut().set_font(font_descriptor);
         if has_bottom_metadata {
-            font_descriptor = font_descriptor.with_weight(druid::FontWeight::REGULAR);
-            font_descriptor = font_descriptor.with_size(11.0);
             self.sender_name_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
             self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
-            self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
-            self.datetime_label.widget_mut().set_font(font_descriptor);
         } else {
-            font_descriptor = font_descriptor.with_weight(druid::FontWeight::SEMI_BOLD);
             self.sender_name_label.widget_mut().set_text_color(Color::WHITE);
-
-            self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
-            self.datetime_label.widget_mut().set_font(font_descriptor);
-            self.sender_name_label.widget_mut().set_text_size(13.0);
-            self.datetime_label.widget_mut().set_text_size(10.0);
+            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
         }
 
         // Do the label first since we need to know its size
