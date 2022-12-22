@@ -184,6 +184,27 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
         },
+        PredefiendLayout::ModernBubble => {
+            settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 32.0;
+            settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_radius = 10.0;
+            settings.chat_bubble_picture_spacing = 6.5;
+            settings.show_self_pic = false;
+            settings.metadata_content_spacing = 2.0;
+            settings.bubble_padding = 7.0;
+            settings.item_spacing = 10.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
+            settings.header_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 11.0;
+            settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
+        },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
             settings.picture_shape = PictureShape::Rectangle;
@@ -441,6 +462,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
 #[derive(Clone, Copy, PartialEq, druid::Data)]
 pub enum PredefiendLayout {
     ModernHangouts,
+    ModernBubble,
     OldHangouts,
     Telegram,
     OtherBubble,
@@ -500,6 +522,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("Modern Hangouts")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::ModernHangouts, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Modern Bubble")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::ModernBubble, data);
                                 })
                         )
                         .with_child(
