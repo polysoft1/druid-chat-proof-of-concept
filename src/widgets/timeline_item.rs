@@ -182,14 +182,13 @@ impl TimelineItemWidget {
                 username
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
-            .with_text_size(crate::SENDER_FONT_SIZE_KEY)
         );
         let datetime_label = WidgetPod::new(
-            widget::Label::new(|item: &Message, _env: &_| {
-                timestamp_to_display_msg(item.timestamp_epoch_seconds, true).to_string()
+            widget::Label::new(|item: &Message, env: &Env| {
+                timestamp_to_display_msg(item.timestamp_epoch_seconds,
+                    env.get(crate::COMPACT_DATETIME)).to_string()
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
-            .with_text_size(crate::DATETIME_FONT_SIZE_KEY)
         );
         Self {
             msg_content_label: msg_content_label,
@@ -265,6 +264,8 @@ impl Widget<Message> for TimelineItemWidget {
         let content_left_spacing: f64 = env.get(crate::LEFT_SPACING_KEY);
         let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
         let is_side_by_side = item_layout == ItemLayoutOption::IRCStyle && bc.max().width > IRC_STACK_WIDTH;
+        let sender_font_size = env.get(crate::SENDER_FONT_SIZE_KEY);
+        let datetime_font_size = env.get(crate::DATETIME_FONT_SIZE_KEY);
         let font_bolded = env.get(crate::HEADER_FONT_BOLDED_KEY);
 
         // Ensure proper font size is used
@@ -275,12 +276,14 @@ impl Widget<Message> for TimelineItemWidget {
         font_descriptor = font_descriptor.with_weight( if font_bolded { druid::FontWeight::SEMI_BOLD } else { druid::FontWeight::REGULAR });
         self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
         self.datetime_label.widget_mut().set_font(font_descriptor);
+        self.sender_name_label.widget_mut().set_text_size(sender_font_size);
+        self.datetime_label.widget_mut().set_text_size(datetime_font_size);
         if has_bottom_metadata {
             self.sender_name_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
             self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
         } else {
             self.sender_name_label.widget_mut().set_text_color(Color::WHITE);
-            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
+            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);            
         }
 
         // Do the label first since we need to know its size

@@ -31,6 +31,7 @@ pub const SENDER_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("pol
 pub const CONTENT_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.content_font_size");
 pub const DATETIME_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.datetime_font_size");
 pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.header_font_bolded");
+pub const COMPACT_DATETIME: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.compact_datetime");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -64,6 +65,7 @@ struct LayoutSettings {
     sender_font_size: f64,
     datetime_font_size: f64,
     header_font_bolded: bool,
+    compact_datetime: bool,
 }
 
 #[derive(Clone, druid::Data)]
@@ -180,6 +182,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -200,6 +203,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 10.0;
             settings.datetime_font_size = 10.0;
+            settings.compact_datetime = true;
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -220,6 +224,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 12.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
         },
         PredefiendLayout::OtherBubble => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -240,6 +245,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -255,6 +261,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 14.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = false;
         },
         PredefiendLayout::CompactDiscord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -270,6 +277,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = false;
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -285,6 +293,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = false;
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -301,6 +310,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
         },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
@@ -317,6 +327,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
         },
     }
     ui_changed_callback(ctx);
@@ -421,6 +432,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(SENDER_FONT_SIZE_KEY, data.layout_settings.sender_font_size as f64);
             env.set(DATETIME_FONT_SIZE_KEY, data.layout_settings.datetime_font_size as f64);
             env.set(HEADER_FONT_BOLDED_KEY, data.layout_settings.header_font_bolded as bool);
+            env.set(COMPACT_DATETIME, data.layout_settings.compact_datetime as bool);
         },
         layout
     )
@@ -596,6 +608,20 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
                     |data: &LayoutSettings, _: &_| {format!("{:1}", data.picture_size)}),
                     0.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Compact Datetime:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::compact_datetime)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
 }
 
@@ -918,6 +944,7 @@ fn main() -> Result<(), PlatformError> {
             sender_font_size: 11.0,
             datetime_font_size: 11.0,
             header_font_bolded: false,
+            compact_datetime: true,
         }
     };
 
