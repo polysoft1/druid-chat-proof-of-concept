@@ -31,7 +31,9 @@ pub const SENDER_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("pol
 pub const CONTENT_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.content_font_size");
 pub const DATETIME_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.datetime_font_size");
 pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.header_font_bolded");
-pub const COMPACT_DATETIME: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.compact_datetime");
+pub const COMPACT_DATETIME_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.compact_datetime");
+pub const SENDER_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.sender_color");
+pub const DATETIME_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.datetime_color");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 
@@ -39,7 +41,7 @@ const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid
 #[derive(Clone, druid::Data, druid::Lens)]
 struct AppState {
     text_edit: sync::Arc<String>,
-    timeline_data: im::Vector<Message>,
+    timeline_data: im::Vector<MessageGroup>,
     profile_pics: im::Vector<ImageBuf>,
     layout_settings: LayoutSettings,
 }
@@ -66,14 +68,35 @@ struct LayoutSettings {
     datetime_font_size: f64,
     header_font_bolded: bool,
     compact_datetime: bool,
+    sender_color: SimpleColor,
+    datetime_color: SimpleColor,
+}
+
+#[derive(Clone, druid::Data, druid::Lens)]
+struct SimpleColor {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+impl SimpleColor {
+    fn to_druid_color(&self) -> druid::Color {
+        druid::Color::rgb8(self.r, self.g, self.b)
+    }
 }
 
 #[derive(Clone, druid::Data)]
-struct Message {
+struct MessageGroup {
     user_id: u32,
     message: String,
     timestamp_epoch_seconds: i64,
     profile_pic: ImageBuf,
+}
+
+#[derive(Clone, druid::Data)]
+struct Message {
+    message: String,
+    timestamp_epoch_seconds: i64,
 }
 
 struct Delegate {
@@ -131,7 +154,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(1300.0, 480.0);
+        let settings_size = druid::Size::new(1400.0, 480.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -145,7 +168,7 @@ fn on_send_icon_click(_ctx: &mut EventCtx, state: &mut AppState, env: &druid::En
     let self_id = env.get(SELF_USER_ID_KEY);
 
     state.timeline_data.push_back(
-        Message {
+        MessageGroup {
             message: state.text_edit.to_string(),
             timestamp_epoch_seconds: chrono::offset::Local::now().timestamp(),
             user_id: self_id as u32,
@@ -183,6 +206,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::ModernBubble => {
             settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -204,6 +229,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -225,6 +252,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 10.0;
             settings.datetime_font_size = 10.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 200, g: 200, b: 200 };
+            settings.datetime_color = SimpleColor { r: 200, g: 200, b: 200 };
         },
         PredefiendLayout::IMessage => {
             settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -246,6 +275,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -267,6 +298,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 12.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::TearDrop => {
             settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -288,6 +321,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::Tailless => {
             settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -309,6 +344,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::OtherBubble => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -330,6 +367,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -346,6 +385,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 14.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = false;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::CompactDiscord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -362,6 +403,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = false;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::Slack => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -378,6 +421,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = false;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::Compact => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
@@ -395,6 +440,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
         PredefiendLayout::IRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
@@ -412,6 +459,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
             settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
     }
     ui_changed_callback(ctx);
@@ -516,7 +565,9 @@ fn build_chat_ui() -> impl Widget<AppState> {
             env.set(SENDER_FONT_SIZE_KEY, data.layout_settings.sender_font_size as f64);
             env.set(DATETIME_FONT_SIZE_KEY, data.layout_settings.datetime_font_size as f64);
             env.set(HEADER_FONT_BOLDED_KEY, data.layout_settings.header_font_bolded as bool);
-            env.set(COMPACT_DATETIME, data.layout_settings.compact_datetime as bool);
+            env.set(COMPACT_DATETIME_KEY, data.layout_settings.compact_datetime as bool);
+            env.set(SENDER_COLOR_KEY, data.layout_settings.sender_color.to_druid_color());
+            env.set(DATETIME_COLOR_KEY, data.layout_settings.datetime_color.to_druid_color());
         },
         layout
     )
@@ -1059,6 +1110,8 @@ fn main() -> Result<(), PlatformError> {
             datetime_font_size: 11.0,
             header_font_bolded: false,
             compact_datetime: true,
+            sender_color: SimpleColor { r: 175, g: 175, b: 175 },
+            datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
         }
     };
 
@@ -1089,7 +1142,7 @@ fn main() -> Result<(), PlatformError> {
     for _ in 1..20 {
         msg_body.push_str(" Appended!");
         let user_id = rng.gen_range(0..5);
-        let msg = Message {
+        let msg = MessageGroup {
             timestamp_epoch_seconds: time,
             message: msg_body.clone(),
             user_id: user_id,
@@ -1100,7 +1153,7 @@ fn main() -> Result<(), PlatformError> {
         offset_amount *= 2;
     }
     let user_id = rng.gen_range(0..5);
-    let msg = Message {
+    let msg = MessageGroup {
         timestamp_epoch_seconds: time,
         message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
         user_id: user_id,
@@ -1108,7 +1161,7 @@ fn main() -> Result<(), PlatformError> {
     };
     initial_state.timeline_data.push_front(msg);
     let user_id = rng.gen_range(0..5);
-    let msg = Message {
+    let msg = MessageGroup {
         timestamp_epoch_seconds: time,
         message: "Hi".to_string(),
         user_id: user_id,

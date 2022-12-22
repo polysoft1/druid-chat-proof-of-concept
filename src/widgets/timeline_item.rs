@@ -5,7 +5,7 @@ use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
 use druid;
-use crate::Message;
+use crate::MessageGroup;
 use num_traits;
 use num_derive;
 
@@ -13,14 +13,13 @@ extern crate chrono;
 use chrono::{ Datelike, TimeZone, Timelike};
 
 pub struct TimelineItemWidget {
-    msg_content_label: WidgetPod<Message, widget::Label<Message>>,
-    sender_name_label: WidgetPod<Message, widget::Label<Message>>,
-    datetime_label: WidgetPod<Message, widget::Label<Message>>,
+    msg_content_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
+    sender_name_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
+    datetime_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
 }
 
 const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
 const SELF_MSG_COLOR: Color = Color::rgb8(12, 131, 242);
-const SUB_TEXT_COLOR: Color = Color::rgb8(175, 175, 175);
 const ARROW_SIZE: f64 = 7.0;
 const IRC_STACK_WIDTH: f64 = 400.0; // How wide should be required for it to no longer be stacked.
 const IRC_HEADER_WIDTH: f64 = 160.0; // How far should we push the text right to make it so they don't end up staggered.
@@ -195,12 +194,12 @@ fn timestamp_to_display_msg(epoch: i64, compact: bool) -> String {
 impl TimelineItemWidget {
     pub fn new() -> Self {
         let msg_content_label = WidgetPod::new(
-            widget::Label::new(|item: &Message, _env: &_| item.message.clone())
+            widget::Label::new(|item: &MessageGroup, _env: &_| item.message.clone())
                 .with_line_break_mode(widget::LineBreaking::WordWrap)
                 .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
             );
         let sender_name_label = WidgetPod::new(
-            widget::Label::new(|item: &Message, _env: &_| {
+            widget::Label::new(|item: &MessageGroup, _env: &_| {
                 let mut username = "User".to_string();
                 username.push_str(item.user_id.to_string().as_str());
                 username
@@ -208,9 +207,9 @@ impl TimelineItemWidget {
             .with_line_break_mode(widget::LineBreaking::WordWrap)
         );
         let datetime_label = WidgetPod::new(
-            widget::Label::new(|item: &Message, env: &Env| {
+            widget::Label::new(|item: &MessageGroup, env: &Env| {
                 timestamp_to_display_msg(item.timestamp_epoch_seconds,
-                    env.get(crate::COMPACT_DATETIME)).to_string()
+                    env.get(crate::COMPACT_DATETIME_KEY)).to_string()
         })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
         );
@@ -223,9 +222,9 @@ impl TimelineItemWidget {
 
 }
 
-impl Widget<Message> for TimelineItemWidget {
+impl Widget<MessageGroup> for TimelineItemWidget {
 
-    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Message, env: &Env) {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut MessageGroup, env: &Env) {
         match event {
             Event::Command(cmd) if cmd.is(crate::REFRESH_UI_SELECTOR) => {
                 ctx.request_layout();
@@ -242,15 +241,21 @@ impl Widget<Message> for TimelineItemWidget {
         &mut self,
         ctx: &mut LifeCycleCtx,
         event: &LifeCycle,
-        data: &Message,
+        data: &MessageGroup,
         env: &Env,
     ) {
+        match event {
+            LifeCycle::HotChanged(_) => {
+                ctx.request_paint();
+            },
+            _ => {}
+        }
         self.msg_content_label.lifecycle(ctx, event, data, env);
         self.sender_name_label.lifecycle(ctx, event, data, env);
         self.datetime_label.lifecycle(ctx, event, data, env);
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Message, data: &Message, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &MessageGroup, data: &MessageGroup, env: &Env) {
         self.msg_content_label.update(ctx, data, env);
         self.sender_name_label.update(ctx, data, env);
         self.datetime_label.update(ctx, data, env);
@@ -260,7 +265,7 @@ impl Widget<Message> for TimelineItemWidget {
         &mut self,
         layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &Message,
+        data: &MessageGroup,
         env: &Env,
     ) -> Size {
         let is_self_user: bool = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
@@ -292,23 +297,15 @@ impl Widget<Message> for TimelineItemWidget {
         let datetime_font_size = env.get(crate::DATETIME_FONT_SIZE_KEY);
         let font_bolded = env.get(crate::HEADER_FONT_BOLDED_KEY);
 
-        // Ensure proper font size is used
-        let has_bottom_metadata = item_layout == ItemLayoutOption::BubbleExternBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalBottomMeta;
-
         let mut font_descriptor = druid::FontDescriptor::new(druid::FontFamily::SYSTEM_UI);
         font_descriptor = font_descriptor.with_weight( if font_bolded { druid::FontWeight::SEMI_BOLD } else { druid::FontWeight::REGULAR });
         self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
         self.datetime_label.widget_mut().set_font(font_descriptor);
         self.sender_name_label.widget_mut().set_text_size(sender_font_size);
         self.datetime_label.widget_mut().set_text_size(datetime_font_size);
-        if has_bottom_metadata {
-            self.sender_name_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
-            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);
-        } else {
-            self.sender_name_label.widget_mut().set_text_color(Color::WHITE);
-            self.datetime_label.widget_mut().set_text_color(SUB_TEXT_COLOR);            
-        }
+        self.sender_name_label.widget_mut().set_text_color(crate::SENDER_COLOR_KEY);
+        self.datetime_label.widget_mut().set_text_color(crate::DATETIME_COLOR_KEY);
+
 
         // Do the label first since we need to know its size
         let full_width_bounding_box = BoxConstraints::new(
@@ -365,7 +362,8 @@ impl Widget<Message> for TimelineItemWidget {
             profile_pic_area
         };
         let content_x_start = content_left_spacing + msg_x_start;
-        let msg_content_origin = if has_bottom_metadata {
+        let msg_content_origin = if item_layout == ItemLayoutOption::BubbleExternBottomMeta
+            || item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
             Point::new(content_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)
         } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
             Point::new(content_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing + y_top_offset)
@@ -433,7 +431,7 @@ impl Widget<Message> for TimelineItemWidget {
         Size::new(bc.max().width, total_height)
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &MessageGroup, env: &Env) {
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
         let left_bubble_flipped: bool = env.get(crate::LEFT_BUBBLE_FLIPPED_KEY);
         let right_bubble_flipped: bool = env.get(crate::RIGHT_BUBBLE_FLIPPED_KEY);
@@ -515,6 +513,10 @@ impl Widget<Message> for TimelineItemWidget {
             let background_rect = RoundedRect::new(bubble_x0 - content_bubble_padding, bubble_y_origin - content_bubble_padding,
                 bubble_x1 + content_bubble_padding, bubble_y1, bubble_radius);
             ctx.fill(background_rect, &(bubble_color));
+        }
+        // Draw hot background (for when user's mouse is hovering over it)
+        if ctx.is_hot() {
+            ctx.fill(self.msg_content_label.layout_rect(), &Color::rgba8(255, 255, 255, 20));
         }
 
         // Draw text
