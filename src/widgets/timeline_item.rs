@@ -38,6 +38,7 @@ pub enum PictureShape {
 pub enum TailShape {
     Straight = 0,
     ConcaveBottom,
+    Fancy,
     Hidden,
 }
 
@@ -54,27 +55,45 @@ fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool
     let x_translation = if flip_x { -1.0 } else { 1.0 };
     let y_translation = if flip_y { -1.0 } else { 1.0 };
     let mut path = kurbo::BezPath::new();
-    path.move_to(Point::new(center_x, y_position + -0.1 * y_translation)); // Start
-    path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation)); // towards picture
-    // Now to low point. + is down
-    match shape {
-        TailShape::ConcaveBottom => {
-            path.quad_to(
-                Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
-                Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
-            );
-        }
-        TailShape::Straight => {
-            path.line_to(Point::new(center_x, y_position + ARROW_SIZE * y_translation));
-        },
-        TailShape::Hidden => {
-            return BezPath::default();
-        }
-    }
+    // Comments are based on unflipped tail. Unflipped means it's pointing to a pic in the top left.
 
-    // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
-    path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position + 0.2));
-    path.line_to(Point::new(center_x, y_position + -0.1));
+    if shape == TailShape::Fancy {
+        // Bottom right
+        path.move_to(Point::new(center_x + ARROW_SIZE * x_translation, y_position + ARROW_SIZE * y_translation));
+        // Move towards picture
+        path.quad_to(
+            Point::new(center_x, y_position - 2.0 * y_translation),
+            Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation)
+        );
+        path.quad_to(
+            Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
+            Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
+        );
+
+    } else {
+        // Start top middle. Aligned with top left of bubble if it had no radius
+        path.move_to(Point::new(center_x, y_position + -0.1 * y_translation));
+        // Flat across the top, towards the picture
+        path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation));
+        // Now to low point. + is down
+        match shape {
+            TailShape::ConcaveBottom => {
+                path.quad_to(
+                    Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
+                    Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
+                );
+            }
+            TailShape::Straight => {
+                path.line_to(Point::new(center_x, y_position + ARROW_SIZE * y_translation));
+            },
+            _ => {
+                return BezPath::default();
+            }
+        }
+
+        // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
+        path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position + 0.2));
+    }
     path.close_path();
     path
 }

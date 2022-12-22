@@ -226,6 +226,27 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.datetime_font_size = 10.0;
             settings.compact_datetime = true;
         },
+        PredefiendLayout::IMessage => {
+            settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 32.0;
+            settings.chat_bubble_tail_shape = TailShape::Fancy;
+            settings.chat_bubble_radius = 10.0;
+            settings.chat_bubble_picture_spacing = 6.5;
+            settings.show_self_pic = false;
+            settings.metadata_content_spacing = 2.0;
+            settings.bubble_padding = 7.0;
+            settings.item_spacing = 10.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = true;
+            settings.right_bubble_flipped = true;
+            settings.header_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 11.0;
+            settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
+        },
         PredefiendLayout::Telegram => {
             settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
             settings.picture_shape = PictureShape::Circle;
@@ -465,6 +486,7 @@ pub enum PredefiendLayout {
     ModernBubble,
     OldHangouts,
     Telegram,
+    IMessage,
     OtherBubble,
     Slack,
     Discord,
@@ -482,10 +504,11 @@ const IMG_SHAPE_OPTIONS: [(&str, PictureShape); 5] =
     ("Hexagon", PictureShape::Hexagon),
     ("Octagon", PictureShape::Octagon),
 ];
-const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 3] =
+const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 4] =
 [
     ("Concave Bottom", TailShape::ConcaveBottom),
     ("Straight", TailShape::Straight),
+    ("Fancy", TailShape::Fancy),
     ("Hidden", TailShape::Hidden),
 ];
 const LAYOUT_OPTIONS: [(&str, ItemLayoutOption); 5] =
@@ -540,6 +563,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("Telegram")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::Telegram, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("iMessage")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::IMessage, data);
                                 })
                         )
                         .with_child(
