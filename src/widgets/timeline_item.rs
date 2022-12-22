@@ -39,6 +39,7 @@ pub enum TailShape {
     Straight = 0,
     ConcaveBottom,
     Fancy,
+    Square,
     Hidden,
 }
 
@@ -69,7 +70,11 @@ fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool
             Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
             Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
         );
-
+    } else if shape == TailShape::Square {
+        // Just make a triangle to remove the radius from this corner
+        path.move_to(Point::new(center_x, y_position + -0.1 * y_translation));
+        path.line_to(Point::new(center_x, y_position + ARROW_SIZE * 2.0 * y_translation));
+        path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position));
     } else {
         // Start top middle. Aligned with top left of bubble if it had no radius
         path.move_to(Point::new(center_x, y_position + -0.1 * y_translation));
