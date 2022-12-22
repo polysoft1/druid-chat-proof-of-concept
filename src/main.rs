@@ -129,7 +129,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.layout_settings.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(1300.0, 500.0);
+        let settings_size = druid::Size::new(1300.0, 480.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -597,20 +597,6 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
                     0.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
-        .with_spacer(20.0)
-        .with_child(widget::Flex::row()
-            .with_flex_child(widget::Label::new("Show Self Profile Pic:").align_right()
-            , 0.7)
-            .with_default_spacer()
-            .with_flex_child(
-                widget::Switch::new()
-                .on_click( |ctx: &mut EventCtx, _, _ | {
-                    ui_changed_callback(ctx);
-                })
-                .lens(LayoutSettings::show_self_pic)
-            , 1.3)
-            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
-        )
 }
 
 fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
@@ -693,6 +679,26 @@ fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.bubble_padding)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(15.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Show Self Profile Pic:")
+                .with_line_break_mode(widget::LineBreaking::WordWrap)
+                .align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::show_self_pic)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .disabled_if(|data, _| data.item_layout != ItemLayoutOption::BubbleExternBottomMeta
+            && data.item_layout != ItemLayoutOption::BubbleInternalBottomMeta
+            && data.item_layout != ItemLayoutOption::BubbleInternalTopMeta
         )
 
 }
