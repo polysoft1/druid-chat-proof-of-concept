@@ -201,6 +201,22 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.left_bubble_flipped = true;
             settings.right_bubble_flipped = true;
         },
+        PredefiendLayout::OtherBubble => {
+            settings.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 28.0;
+            settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_radius = 3.0;
+            settings.chat_bubble_picture_spacing = 6.0;
+            settings.show_self_pic = false;
+            settings.metadata_content_spacing = 5.0;
+            settings.bubble_padding = 5.0;
+            settings.item_spacing = 9.5;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
+        },
         PredefiendLayout::Discord => {
             settings.item_layout = ItemLayoutOption::Bubbleless;
             settings.picture_shape = PictureShape::Circle;
@@ -209,6 +225,17 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 7.0;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 23.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+        },
+        PredefiendLayout::CompactDiscord => {
+            settings.item_layout = ItemLayoutOption::Bubbleless;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 36.0;
+            settings.chat_bubble_picture_spacing = 8.0;
+            settings.metadata_content_spacing = 7.0;
+            settings.bubble_padding = 0.0;
+            settings.item_spacing = 13.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
         },
@@ -356,8 +383,10 @@ pub enum PredefiendLayout {
     ModernHangouts,
     OldHangouts,
     Telegram,
+    OtherBubble,
     Slack,
     Discord,
+    CompactDiscord,
     Compact,
     IRC,
 }
@@ -426,9 +455,21 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                                 })
                         )
                         .with_child(
+                            widget::Button::new("Other Bubble")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::OtherBubble, data);
+                                })
+                        )
+                        .with_child(
                             widget::Button::new("Discord")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::Discord, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Compact Discord")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::CompactDiscord, data);
                                 })
                         )
                         .with_child(

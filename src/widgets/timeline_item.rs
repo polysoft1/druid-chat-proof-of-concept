@@ -561,7 +561,7 @@ impl Widget<Message> for TimelineItemWidget {
         // Now draw the line to left of content, if enabled
         if show_left_line {
             let line_x0 = content_label_rect.x0 - content_left_line_spacing;
-            let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 2.0, content_label_rect.y1);
+            let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 1.0, content_label_rect.y1);
             ctx.fill(line_rect, &Color::GRAY);
         }
     }
