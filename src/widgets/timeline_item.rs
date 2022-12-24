@@ -6,6 +6,7 @@ use druid::WidgetPod;
 use druid::Point;
 use druid;
 use crate::MessageGroup;
+use crate::LayoutSettings;
 use num_traits;
 use num_derive;
 
@@ -222,6 +223,233 @@ impl TimelineItemWidget {
 
 }
 
+impl LayoutSettings {
+    fn get_metadata_font_descriptor(&self) -> druid::FontDescriptor {
+        druid::FontDescriptor::new(druid::FontFamily::SYSTEM_UI)
+            .with_weight(
+                if self.metadata_font_bolded {
+                    druid::FontWeight::SEMI_BOLD
+                } else {
+                    druid::FontWeight::REGULAR
+                }
+            )
+    }
+
+    fn is_bubble(&self) -> bool {
+        match self.item_layout {
+            ItemLayoutOption::BubbleExternBottomMeta | ItemLayoutOption::BubbleInternalBottomMeta
+                | ItemLayoutOption::BubbleInternalTopMeta => {
+                true
+            },
+            _ => false
+        }
+    }
+    fn is_bubble_flipped(&self, is_self_user: bool) -> bool {
+        if is_self_user {
+            self.right_bubble_flipped
+        } else {
+            self.left_bubble_flipped
+        }
+    }
+    fn actual_profile_pic_width(&self, is_self_user: bool) -> f64 {
+        if self.show_picture(is_self_user) {
+            // profile pic is shown always when not self, and when configured when self.
+            self.picture_size
+        } else {
+            // Not shown, so zero.
+            0.0
+        }
+    }
+
+    // Offset in the case of tiny flipped bubbles with tails, since tiny
+    // messages cause the tail to not align with the picture properly
+    fn get_top_y_offset(&self, is_self_user: bool, sender_label_size: &Size, msg_label_size: &Size) -> f64 {
+        if self.is_bubble() && self.is_bubble_flipped(is_self_user) {
+            let mut space_taken = 2.0 * self.bubble_padding + msg_label_size.height;
+            if self.item_layout != ItemLayoutOption::BubbleExternBottomMeta {
+                space_taken += sender_label_size.height + self.metadata_content_spacing
+            };
+            let profile_pic_width = self.actual_profile_pic_width(is_self_user);
+            if space_taken >= profile_pic_width {
+                0.0
+            } else {
+                profile_pic_width - space_taken
+            }
+        } else {
+            0.0
+        }
+    }
+
+    // Includes the profile pic and the space between the message or bubble.
+    fn get_profile_pic_area_width(&self, is_self_user: bool) -> f64 {
+        self.actual_profile_pic_width(is_self_user) + self.chat_bubble_picture_spacing
+    }
+
+    // Returns true when the content will not be vertically stacked, but instead horizontally aligned.
+    fn is_side_by_side(&self, space_available: &BoxConstraints) -> bool {
+        self.item_layout == ItemLayoutOption::IRCStyle && space_available.max().width > IRC_STACK_WIDTH
+    }
+
+    // The area that the content can take up.
+    // Under most layouts, that's the total width minus the space taken up by
+    // the profile pic and the space between it and the content.
+    fn get_available_content_width(&self, space_available: &BoxConstraints, is_self_user: bool) -> f64 {
+        let mut width: f64 = space_available.max().width - self.left_spacing;
+        width -= if self.is_side_by_side(space_available) {
+            IRC_HEADER_WIDTH
+        } else {
+            self.get_profile_pic_area_width(is_self_user)
+        };
+        if self.is_bubble() {
+            width -= self.bubble_padding * 2.0;
+        }
+        width
+    }
+    fn get_available_content_area(&self, space_available: &BoxConstraints, is_self_user: bool) -> BoxConstraints {
+        to_full_height_area(self.get_available_content_width(space_available, is_self_user), space_available)
+    }
+
+    fn get_sender_label_area(&self, space_available: &BoxConstraints) -> BoxConstraints {
+        let width = if self.is_side_by_side(space_available) {
+            IRC_HEADER_WIDTH - self.picture_size
+        } else {
+            space_available.max().width - self.left_spacing
+        };
+        to_full_height_area(width, space_available)
+    }
+
+    fn get_unpadded_content_x_left_position(&self, is_self_user: bool, space_available: &BoxConstraints,
+        actual_max_content_width: f64, total_metadata_width: f64) -> f64
+    {
+        if is_self_user && self.is_bubble() { // Only shift if using a bubble layout
+            let required_width = if self.item_layout != ItemLayoutOption::BubbleExternBottomMeta
+                && total_metadata_width > actual_max_content_width
+            {
+                // For ExternBottomMeta, the content is on the outside, so the bubble doesn't affect the size
+                total_metadata_width
+            } else {
+                actual_max_content_width
+            };
+            // Offset so that the profile pic is pushed all the way to the right
+            space_available.max().width - required_width
+                - self.bubble_padding * 2.0 - self.get_profile_pic_area_width(is_self_user)
+        } else {
+            // Push to right of profile pic
+            self.get_profile_pic_area_width(is_self_user)
+        }
+    }
+    fn get_content_origin(&self, is_self_user: bool, space_available: &BoxConstraints, y_top_offset: f64,
+        widest_msg_content: f64, total_metadata_width: f64, metadata_height: f64) -> Point
+    {
+        let content_x_start = self.get_unpadded_content_x_left_position(
+            is_self_user, space_available, widest_msg_content, total_metadata_width
+        ) + self.left_spacing;
+        match self.item_layout {
+            ItemLayoutOption::BubbleExternBottomMeta | ItemLayoutOption::BubbleInternalBottomMeta => {
+                Point::new(
+                    content_x_start + self.bubble_padding,
+                    y_top_offset + self.bubble_padding
+                )
+            },
+            ItemLayoutOption::BubbleInternalTopMeta => {
+                Point::new(
+                    content_x_start + self.bubble_padding,
+                    y_top_offset + self.bubble_padding * 2.0 + metadata_height
+                )
+            },
+            ItemLayoutOption::IRCStyle => {
+                // Allow having msg and name on same axis if wide enough
+                // else stack them
+                if self.is_side_by_side(space_available) {
+                    // The msg content is to the right of the metadata
+                    Point::new(self.left_spacing + IRC_HEADER_WIDTH, y_top_offset)
+                } else {
+                    // Stacked, with picture above instead of to side, since this is the most compact layout
+                    Point::new(self.left_spacing, metadata_height + self.metadata_content_spacing + y_top_offset)
+                }
+            },
+            _ => {
+                // Allow text to move all the way to left if the picture's size
+                // is less than the height of the meta label
+                Point::new(
+                    if self.align_to_picture {
+                        content_x_start
+                    } else {
+                        0.0
+                    },
+                    metadata_height + self.metadata_content_spacing + y_top_offset
+                )
+            }
+        }
+    }
+
+    fn get_sender_origin(&self, is_self_user: bool, space_available: &BoxConstraints,
+        total_metadata_width: f64, total_msg_height: f64, widest_msg_width: f64, y_top_offset: f64) -> Point
+    {
+        let msg_x_start = self.get_unpadded_content_x_left_position(is_self_user, space_available, 
+            widest_msg_width, total_metadata_width);
+        match self.item_layout {
+            ItemLayoutOption::BubbleExternBottomMeta => {
+                // Outside the bubble, under it.
+                // Do not let it cut off the screen to right if it's self user
+                let metadata_x_start = if is_self_user && total_metadata_width > widest_msg_width {
+                    msg_x_start + widest_msg_width - total_metadata_width + self.bubble_padding
+                } else {
+                    msg_x_start
+                };
+                Point::new(metadata_x_start, total_msg_height
+                    + self.bubble_padding * 2.0 + self.metadata_content_spacing + y_top_offset)
+            },
+            ItemLayoutOption::BubbleInternalTopMeta => {
+                // Inside the bubble, near the top, offset by just the padding
+                Point::new(msg_x_start + self.bubble_padding, self.bubble_padding + y_top_offset)
+            },
+            ItemLayoutOption::BubbleInternalBottomMeta => {
+                // Near the bottom of the bubble, but inside it. Offset by padding.
+                Point::new(msg_x_start + self.bubble_padding,
+                    total_msg_height + self.bubble_padding + self.metadata_content_spacing + y_top_offset)
+            },
+            _ => {
+                // Non-bubble
+                Point::new(msg_x_start, 0.0)
+            }
+        }
+    }
+
+    fn get_total_height(&self, space_available: &BoxConstraints, sender_label_size: &Size,
+        msg_label_size: &Size, y_top_offset: f64) -> f64
+    {
+        if self.is_side_by_side(space_available) {
+            sender_label_size.height.max(msg_label_size.height) + y_top_offset
+        } else {
+            y_top_offset + msg_label_size.height + sender_label_size.height + self.metadata_content_spacing + if self.is_bubble() {
+                2.0 * self.bubble_padding
+            } else {
+                0.0
+            }
+        }
+    }
+
+    fn show_picture(&self, is_self_user: bool) -> bool {
+        !is_self_user || self.show_self_pic || !self.is_bubble()
+    }
+
+    fn profile_pic_x_offset(&self, is_self_user: bool, width_available: f64) -> f64 {
+        if is_self_user && self.is_bubble() {
+            width_available - self.picture_size
+        } else {
+            0.0
+        }
+    }
+}
+
+fn to_full_height_area(width: f64, space_available: &BoxConstraints) -> BoxConstraints {
+    BoxConstraints::new(
+        Size::new(0.0, 0.0),
+        Size::new(width, space_available.max().height)
+    )
+}
+
 impl Widget<MessageGroup> for TimelineItemWidget {
 
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut MessageGroup, env: &Env) {
@@ -268,148 +496,52 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         data: &MessageGroup,
         env: &Env,
     ) -> Size {
+        let settings = LayoutSettings::from_env(env);
         let is_self_user: bool = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
-        let left_bubble_flipped: bool = env.get(crate::LEFT_BUBBLE_FLIPPED_KEY);
-        let right_bubble_flipped: bool = env.get(crate::RIGHT_BUBBLE_FLIPPED_KEY);
-        let is_bubble_flipped = if is_self_user {
-            right_bubble_flipped
-        } else {
-            left_bubble_flipped
-        };
-        let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
-        let has_bubble = item_layout == ItemLayoutOption::BubbleExternBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalTopMeta;
-        let profile_pic_width: f64 = if !is_self_user || env.get(crate::SHOW_SELF_PROFILE_PIC) || !has_bubble{
-            // profile pic is shown always when not self, and when configured when self.
-            env.get(crate::IMAGE_SIZE_KEY)
-        } else {
-            // Not shown, so zero.
-            0.0
-        };
-        let content_bubble_padding: f64 = env.get(crate::BUBBLE_PADDING_KEY);
-        let metadata_content_spacing: f64 = env.get(crate::METADATA_CONTENT_SPACING_KEY);
-        let profile_pic_bubble_spacing: f64 = env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
-        let content_left_spacing: f64 = env.get(crate::LEFT_SPACING_KEY);
-        let profile_pic_area: f64 = profile_pic_width + profile_pic_bubble_spacing;
-        let is_side_by_side = item_layout == ItemLayoutOption::IRCStyle && bc.max().width > IRC_STACK_WIDTH;
-        let sender_font_size = env.get(crate::SENDER_FONT_SIZE_KEY);
-        let datetime_font_size = env.get(crate::DATETIME_FONT_SIZE_KEY);
-        let font_bolded = env.get(crate::HEADER_FONT_BOLDED_KEY);
 
-        let mut font_descriptor = druid::FontDescriptor::new(druid::FontFamily::SYSTEM_UI);
-        font_descriptor = font_descriptor.with_weight( if font_bolded { druid::FontWeight::SEMI_BOLD } else { druid::FontWeight::REGULAR });
-        self.sender_name_label.widget_mut().set_font(font_descriptor.clone());
-        self.datetime_label.widget_mut().set_font(font_descriptor);
-        self.sender_name_label.widget_mut().set_text_size(sender_font_size);
-        self.datetime_label.widget_mut().set_text_size(datetime_font_size);
+        self.sender_name_label.widget_mut().set_font(settings.get_metadata_font_descriptor());
+        self.datetime_label.widget_mut().set_font(settings.get_metadata_font_descriptor());
+        self.sender_name_label.widget_mut().set_text_size(crate::SENDER_FONT_SIZE_KEY);
+        self.datetime_label.widget_mut().set_text_size(crate::DATETIME_FONT_SIZE_KEY);
         self.sender_name_label.widget_mut().set_text_color(crate::SENDER_COLOR_KEY);
         self.datetime_label.widget_mut().set_text_color(crate::DATETIME_COLOR_KEY);
 
 
-        // Do the label first since we need to know its size
-        let full_width_bounding_box = BoxConstraints::new(
-            Size::new(0.0, 0.0),
-            Size::new(bc.max().width - profile_pic_area - 2.0 * content_bubble_padding, bc.max().height)
+        // Do the label layouts first since we need to know their sizes
+        let sender_label_size = self.sender_name_label.layout(
+            layout_ctx,
+            &settings.get_sender_label_area(bc),
+            data, env
         );
-        let msg_content_bounding_box = BoxConstraints::new(
-            Size::new(0.0, 0.0),
-            if is_side_by_side {
-                Size::new(0.0f64.max(full_width_bounding_box.max().width - IRC_HEADER_WIDTH - content_left_spacing), bc.max().height)
-            } else {
-                Size::new(0.0f64.max(full_width_bounding_box.max().width - content_left_spacing), bc.max().height)
-            }
+        let datetime_label_size = self.datetime_label.layout(
+            layout_ctx, &settings.get_sender_label_area(bc),
+            data, env
         );
-        let sender_bounding_box = if is_side_by_side {
-            BoxConstraints::new(
-                Size::new(0.0, 0.0),
-                Size::new(IRC_HEADER_WIDTH - profile_pic_width, bc.max().height)
-            )
-        } else {
-            full_width_bounding_box.clone()
-        };
-        // Call layout higher up so we have their sizes.
-        let sender_label_size = self.sender_name_label.layout(layout_ctx, &sender_bounding_box, data, env);
-        let datetime_label_size = self.datetime_label.layout(layout_ctx, &sender_bounding_box, data, env);
-        let msg_label_size = self.msg_content_label.layout(layout_ctx, &msg_content_bounding_box, data, env);
+        let msg_label_size = self.msg_content_label.layout(
+            layout_ctx,
+            &settings.get_available_content_area(bc, is_self_user),
+            data, env
+        );
         let total_metadata_width = sender_label_size.width + datetime_label_size.width;
 
         // Offset in the case of tiny flipped bubbles with tails, since tiny
         // messages cause the tail to not align with the picture properly
-        let y_top_offset = if has_bubble && is_bubble_flipped {
-            let mut space_taken = 2.0 * content_bubble_padding + msg_label_size.height;
-            if item_layout != ItemLayoutOption::BubbleExternBottomMeta {
-                space_taken += sender_label_size.height + metadata_content_spacing
-            };
-            if space_taken >= profile_pic_width {
-                0.0
-            } else {
-                profile_pic_width - space_taken
-            }
-        } else {
-            0.0
-        };
+        let y_top_offset = settings.get_top_y_offset(is_self_user, &sender_label_size, &msg_label_size);
 
-        let msg_x_start: f64 = if is_self_user && has_bubble { // Only shift if using a bubble layout
-            let mut bubble_content_width = msg_label_size.width;
-            if item_layout != ItemLayoutOption::BubbleExternBottomMeta {
-                bubble_content_width = bubble_content_width.max(total_metadata_width);
-            }
-            // Offset so that the profile pic is pushed all the way to the right
-            bc.max().width - bubble_content_width - content_bubble_padding * 2.0 - profile_pic_area
-        } else {
-            // Push to right of profile pic
-            profile_pic_area
-        };
-        let content_x_start = content_left_spacing + msg_x_start;
-        let msg_content_origin = if item_layout == ItemLayoutOption::BubbleExternBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
-            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)
-        } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            Point::new(content_x_start + content_bubble_padding, content_bubble_padding + sender_label_size.height + metadata_content_spacing + y_top_offset)
-        } else if item_layout == ItemLayoutOption::IRCStyle{
-            // Allow having msg and name on same axis if wide enough
-            // else stack them
-            if is_side_by_side {
-                // The msg content is to the right of the metadata
-                Point::new(content_left_spacing + IRC_HEADER_WIDTH + content_bubble_padding, y_top_offset)
-            } else {
-                // Stacked, with no room for picture, since this is the most compact layout
-                Point::new(content_left_spacing, metadata_content_spacing + sender_label_size.height + y_top_offset)
-            }
-        } else {
-            // Allow text to move all the way to left if the picture's size
-            // is less than the height of the meta label
-            if profile_pic_width - 5.0 < sender_label_size.height {
-                Point::new(0.0, content_left_spacing + metadata_content_spacing + sender_label_size.height + y_top_offset)
-            } else {
-                Point::new(content_x_start, metadata_content_spacing + sender_label_size.height + y_top_offset)
-            }
-        };
+        self.msg_content_label.set_origin(layout_ctx, data, env,
+            settings.get_content_origin(
+                is_self_user,
+                bc,
+                y_top_offset,
+                msg_label_size.width,
+                total_metadata_width,
+                sender_label_size.height
+            )
+        );
 
-        self.msg_content_label.set_origin(layout_ctx, data, env, msg_content_origin);
+        let sender_label_origin = settings.get_sender_origin(is_self_user, bc, total_metadata_width, 
+            msg_label_size.height, msg_label_size.width, y_top_offset);
 
-        let sender_label_origin: Point = if item_layout == ItemLayoutOption::BubbleExternBottomMeta {
-            // Outside the bubble, under it.
-            // Do not let it cut off the screen to right if it's self user
-            let metadata_x_start = if is_self_user && total_metadata_width > msg_label_size.width {
-                msg_x_start + msg_label_size.width - total_metadata_width + content_bubble_padding
-            } else {
-                msg_x_start
-            };
-            Point::new(metadata_x_start, msg_label_size.height
-                + content_bubble_padding * 2.0 + metadata_content_spacing + y_top_offset)
-        } else if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            // Inside the bubble, near the top, offset by just the padding
-            Point::new(msg_x_start + content_bubble_padding, content_bubble_padding + y_top_offset)
-        } else if item_layout == ItemLayoutOption::BubbleInternalBottomMeta {
-            // Near the bottom of the bubble, but inside it. Offset by padding.
-            Point::new(msg_x_start + content_bubble_padding, 
-                msg_label_size.height + content_bubble_padding + metadata_content_spacing + y_top_offset)
-        } else {
-            // Non-bubble
-            Point::new(msg_x_start, 0.0)
-        };
         // Position to right of sender. Also account for differences in height.
         let datetime_label_origin = Point::new(sender_label_origin.x + sender_label_size.width,
             sender_label_origin.y + (sender_label_size.height - datetime_label_size.height) * 0.75);
@@ -419,101 +551,15 @@ impl Widget<MessageGroup> for TimelineItemWidget {
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        let total_height = if is_side_by_side {
-            sender_label_size.height.max(msg_label_size.height) + y_top_offset
-        } else {
-            y_top_offset + msg_label_size.height + sender_label_size.height + metadata_content_spacing + if has_bubble {
-                2.0 * content_bubble_padding
-            } else {
-                0.0
-            }
-        };
-        Size::new(bc.max().width, total_height)
+        Size::new(bc.max().width, settings.get_total_height(bc, &sender_label_size, &msg_label_size, y_top_offset))
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &MessageGroup, env: &Env) {
+        let settings = LayoutSettings::from_env(env);
         let is_self_user = env.get(crate::SELF_USER_ID_KEY) as u32 == data.user_id;
-        let left_bubble_flipped: bool = env.get(crate::LEFT_BUBBLE_FLIPPED_KEY);
-        let right_bubble_flipped: bool = env.get(crate::RIGHT_BUBBLE_FLIPPED_KEY);
-        let is_bubble_flipped = if is_self_user {
-            right_bubble_flipped
-        } else {
-            left_bubble_flipped
-        };
-        let item_layout: ItemLayoutOption = num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index");
-        let has_bubble = item_layout == ItemLayoutOption::BubbleExternBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalBottomMeta
-            || item_layout == ItemLayoutOption::BubbleInternalTopMeta;
-        let show_self_pic = env.get(crate::SHOW_SELF_PROFILE_PIC);
-        let show_left_line = env.get(crate::SHOW_LEFT_LINE_KEY);
-        let content_left_line_spacing = env.get(crate::LEFT_SPACING_KEY);
-        let bubble_radius = env.get(crate::CHAT_BUBBLE_RADIUS_KEY);
-        let content_bubble_padding: f64 = env.get(crate::BUBBLE_PADDING_KEY);
-        let metadata_content_spacing: f64 = env.get(crate::METADATA_CONTENT_SPACING_KEY);
-        let show_pic = !is_self_user || show_self_pic || !has_bubble;
-        let bubble_color = if is_self_user {
-            SELF_MSG_COLOR
-        } else {
-            OTHER_MSG_COLOR
-        };
-
-        // For bubbled chats, the styles I've seen are:
-        // - Point arrow attached alongside profile pic
-        // - Point arrow attached without profile pic
-        // - No arrow with profile pic to the side
-        // - Profile pic as circle centered alongside border of bubble
-        //   (padding needs to be large enough, and profile pic needs to be small enough)
-        // There are several arrow styles:
-        // - Flat along top/bottom, and straight angled down/up
-        // - Flat along top/bottom, but curved angled down/up
-        // - Curved on both edges (this is what iMessage uses)
-
+    
         // First, do the calculations and variables
-        let profile_pic_width: f64 = if show_pic {
-            // profile pic is shown always when not self, and when configured when self.
-            env.get(crate::IMAGE_SIZE_KEY)
-        } else {
-            // Not shown, so zero.
-            0.0
-        };
-        let total_width = ctx.size().width;
-        let profile_pic_spacing= env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY);
-        let profile_pic_x_offset = if is_self_user && has_bubble {
-            total_width - profile_pic_width
-        } else {
-            0.0
-        };
-        let tail_x_center = if is_self_user {
-            profile_pic_x_offset - profile_pic_spacing
-        } else {
-            profile_pic_width + profile_pic_spacing
-        };
-
-        let content_label_rect = self.msg_content_label.layout_rect();
-        let sender_label_rect = self.sender_name_label.layout_rect();
-        let datetime_label_rect = self.datetime_label.layout_rect();
-        let bubble_y_origin = if item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            self.sender_name_label.layout_rect().y0
-        } else {
-            self.msg_content_label.layout_rect().y0
-        };
-        let mut bubble_x0 = content_label_rect.x0 - content_left_line_spacing;
-        let mut bubble_x1 = content_label_rect.x1;
-
-        let mut unpadded_bubble_height = content_label_rect.y1 - content_label_rect.y0;
-        if item_layout == ItemLayoutOption::BubbleInternalBottomMeta || item_layout == ItemLayoutOption::BubbleInternalTopMeta {
-            unpadded_bubble_height += sender_label_rect.height();
-            unpadded_bubble_height += metadata_content_spacing;
-            bubble_x0 = bubble_x0.min(sender_label_rect.x0).min(datetime_label_rect.x0);
-            bubble_x1 = bubble_x1.max(sender_label_rect.x1).max(datetime_label_rect.x1);
-        }
-        let bubble_y1 = bubble_y_origin + unpadded_bubble_height + content_bubble_padding;
-        // Draw background
-        if has_bubble {
-            let background_rect = RoundedRect::new(bubble_x0 - content_bubble_padding, bubble_y_origin - content_bubble_padding,
-                bubble_x1 + content_bubble_padding, bubble_y1, bubble_radius);
-            ctx.fill(background_rect, &(bubble_color));
-        }
+        self.draw_bubble_background(ctx, &settings, is_self_user);
         // Draw hot background (for when user's mouse is hovering over it)
         if ctx.is_hot() {
             ctx.fill(self.msg_content_label.layout_rect(), &Color::rgba8(255, 255, 255, 20));
@@ -525,73 +571,150 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.datetime_label.paint(ctx, data, env);
 
         // Next, the profile pic
+        self.draw_profile_pic(ctx, data, &settings, is_self_user);
+        // Now the little arrow/tail that goes from the image to the bubble
+        self.draw_bubble_tail(ctx, env, &settings, is_self_user);
+        // Now draw the line to left of content, if enabled
+        self.draw_left_line(ctx, &settings);
+    }
+
+}
+
+impl TimelineItemWidget {
+    // Gets the total space taken up by all labels in the bubble, minus the padding. 
+    // Return order: x0, x1, y0, y1
+    fn get_bubble_dimensions(&self, settings: &LayoutSettings) -> (f64, f64, f64, f64) {
+        let content_label_rect = self.msg_content_label.layout_rect();
+        let sender_label_rect = self.sender_name_label.layout_rect();
+        let datetime_label_rect = self.datetime_label.layout_rect();
+        let mut bubble_x0 = content_label_rect.x0 - settings.left_spacing;
+        let mut bubble_x1 = content_label_rect.x1;
+
+        let mut unpadded_bubble_height = content_label_rect.y1 - content_label_rect.y0;
+        if settings.item_layout == ItemLayoutOption::BubbleInternalBottomMeta || settings.item_layout == ItemLayoutOption::BubbleInternalTopMeta {
+            unpadded_bubble_height += sender_label_rect.height();
+            unpadded_bubble_height += settings.metadata_content_spacing;
+            bubble_x0 = bubble_x0.min(sender_label_rect.x0).min(datetime_label_rect.x0);
+            bubble_x1 = bubble_x1.max(sender_label_rect.x1).max(datetime_label_rect.x1);
+        }
+        let bubble_y0 = if settings.item_layout == ItemLayoutOption::BubbleInternalTopMeta {
+            sender_label_rect.y0
+        } else {
+            content_label_rect.y0
+        };
+
+        let bubble_y1 = bubble_y0 + unpadded_bubble_height;
+
+        (bubble_x0 - settings.bubble_padding, bubble_x1 + settings.bubble_padding,
+            bubble_y0 - settings.bubble_padding, bubble_y1 + settings.bubble_padding)
+    }
+
+    fn get_bubble_color(&self, is_self_user: bool) -> druid::Color {
+        if is_self_user {
+            SELF_MSG_COLOR
+        } else {
+            OTHER_MSG_COLOR
+        }
+    }
+
+    fn draw_bubble_background(&self, ctx: &mut PaintCtx, settings: &LayoutSettings, is_self_user: bool) {
+        let (bubble_x0, bubble_x1, bubble_y0, bubble_y1) = self.get_bubble_dimensions(settings);
+
+        let bubble_color = self.get_bubble_color(is_self_user);
+        // Draw background
+        if settings.is_bubble() {
+            let background_rect = RoundedRect::new(
+                bubble_x0, bubble_y0, bubble_x1, bubble_y1, settings.chat_bubble_radius
+            );
+            ctx.fill(background_rect, &(bubble_color));
+        }
+    }
+
+    fn draw_bubble_tail(&self, ctx: &mut PaintCtx, env: &druid::Env, settings: &LayoutSettings, is_self_user: bool) {
+        if settings.is_bubble() {
+            let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
+            let tail_shape: TailShape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
+            let (bubble_x0, bubble_x1, bubble_y0, bubble_y1) = self.get_bubble_dimensions(settings);
+
+            let is_flipped = settings.is_bubble_flipped(is_self_user);
+            let tail_y_position = if is_flipped {
+                bubble_y1
+            } else {
+                bubble_y0
+            };
+            let tail_x_position = if is_self_user {
+                bubble_x1
+            } else {
+                bubble_x0
+            };
+            let bubble_color = self.get_bubble_color(is_self_user);
+            
+            if tail_shape != TailShape::Hidden {
+                ctx.fill(make_tail_path(
+                    tail_x_position,
+                    tail_y_position,
+                    tail_shape,
+                    is_self_user,
+                    is_flipped
+                ), &bubble_color);
+            }
+        }
+    }
+
+    fn draw_profile_pic(&self, ctx: &mut PaintCtx, data: &MessageGroup, settings: &LayoutSettings, is_self_user: bool) {
+        if !settings.show_picture(is_self_user) {
+            return;
+        }
+        let profile_pic_x_offset = settings.profile_pic_x_offset(is_self_user, ctx.region().bounding_box().width());
         let piet_image = {
             let image_data = data.profile_pic.clone();
             image_data.to_image(ctx.render_ctx)
         };
-        if show_pic {
-            ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
-                let shape_as_int = env.get(crate::IMAGE_SHAPE_KEY);
-                let pic_y_offset = if is_bubble_flipped && has_bubble {
-                    0.0f64.max(bubble_y1 - profile_pic_width) - 0.3
-                } else {
-                    0.3 // For preventing some of the profile pic from showing over the tail
-                };
-                match num_traits::FromPrimitive::from_u64(shape_as_int) {
-                    Some(PictureShape::Rectangle) => {},
-                    Some(PictureShape::RoundedRectangle) => {
-                        ctx.clip(
-                            RoundedRect::new(profile_pic_x_offset, 0.0, 
-                                profile_pic_x_offset + profile_pic_width, profile_pic_width, 4.0)
-                        )
-                    },
-                    Some(PictureShape::Circle) => {
-                        ctx.clip(Circle::new(
-                            Point::new(profile_pic_x_offset + profile_pic_width / 2.0, profile_pic_width / 2.0 + pic_y_offset), profile_pic_width / 2.0)
-                        )
-                    },
-                    Some(PictureShape::Hexagon) => {
-                        ctx.clip(make_hexagon_path(profile_pic_x_offset, 0.08, 0.25, profile_pic_width))
-                    },
-                    Some(PictureShape::Octagon) => {
-                        ctx.clip(make_octagon_path(profile_pic_x_offset, 0.25, profile_pic_width))
-                    },
-                    None => eprintln!("Shape int does not translate to known shape, or it is not implemented."),
-                }
-                ctx.draw_image(&piet_image,
-                    druid::Rect::new(profile_pic_x_offset, pic_y_offset,
-                        profile_pic_width + profile_pic_x_offset, profile_pic_width + pic_y_offset),
-                        druid::piet::InterpolationMode::Bilinear
-                );
-            });
-        }
-        // Now the little arrow/tail that goes from the image to the bubble
-        if has_bubble {
-            let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
-            let tail_shape: TailShape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
-            let tail_y_position = if is_bubble_flipped {
-                bubble_y1
+        ctx.with_save(|ctx| { // Makes it so the clip doesn't mess up the following draws
+            let pic_y_offset = if settings.is_bubble_flipped(is_self_user) && settings.is_bubble() {
+                let (_, _, _, bubble_y1) = self.get_bubble_dimensions(settings);
+
+                0.0f64.max(bubble_y1 - settings.picture_size) - 0.3
             } else {
-                0.0
+                0.3 // For preventing some of the profile pic from showing over the tail
             };
-            
-            if tail_shape != TailShape::Hidden {
-                ctx.fill(make_tail_path(
-                    tail_x_center,
-                    tail_y_position,
-                    tail_shape,
-                    is_self_user,
-                    is_bubble_flipped
-                ), &bubble_color);
+            match settings.picture_shape {
+                PictureShape::Rectangle => {},
+                PictureShape::RoundedRectangle => {
+                    ctx.clip(
+                        RoundedRect::new(profile_pic_x_offset, 0.0, 
+                            profile_pic_x_offset + settings.picture_size, settings.picture_size, 4.0)
+                    )
+                },
+                PictureShape::Circle => {
+                    ctx.clip(Circle::new(
+                        Point::new(
+                            profile_pic_x_offset + settings.picture_size / 2.0,
+                            settings.picture_size / 2.0 + pic_y_offset), settings.picture_size / 2.0
+                        )
+                    )
+                },
+                PictureShape::Hexagon => {
+                    ctx.clip(make_hexagon_path(profile_pic_x_offset, 0.08, 0.25, settings.picture_size))
+                },
+                PictureShape::Octagon => {
+                    ctx.clip(make_octagon_path(profile_pic_x_offset, 0.25, settings.picture_size))
+                },
             }
-        }
-        // Now draw the line to left of content, if enabled
-        if show_left_line {
-            let line_x0 = content_label_rect.x0 - content_left_line_spacing;
+            ctx.draw_image(&piet_image,
+                druid::Rect::new(profile_pic_x_offset, pic_y_offset,
+                    settings.picture_size + profile_pic_x_offset, settings.picture_size + pic_y_offset),
+                    druid::piet::InterpolationMode::Bilinear
+            );
+        });
+    }
+
+    fn draw_left_line(&self, ctx: &mut PaintCtx, settings: &LayoutSettings) {
+        if settings.show_left_line {
+            let content_label_rect = self.msg_content_label.layout_rect();
+            let line_x0 = content_label_rect.x0 - settings.left_spacing;
             let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 1.0, content_label_rect.y1);
             ctx.fill(line_rect, &Color::GRAY);
         }
     }
-
-
 }

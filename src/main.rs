@@ -13,15 +13,16 @@ use widgets::timeline_item::{self, PictureShape, TailShape, ItemLayoutOption};
 
 // Env keys to define layout in the environment
 pub const ITEM_LAYOUT_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.item_layout");
-pub const IMAGE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.image_shape");
-pub const IMAGE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.image_size");
+pub const PICTURE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.picture_shape");
+pub const PICTURE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.picture_size");
 pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
 pub const CHAT_BUBBLE_RADIUS_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_radius");
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
-pub const SHOW_SELF_PROFILE_PIC: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
+pub const SHOW_SELF_PROFILE_PIC_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_self_pic");
 pub const BUBBLE_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_padding");
 pub const METADATA_CONTENT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.metadata_content_padding");
+pub const ALIGN_TO_PICTURE: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.align-to-picture");
 pub const ITEM_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.item_spacing");
 pub const SHOW_LEFT_LINE_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_left_line");
 pub const LEFT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_spacing");
@@ -30,7 +31,7 @@ pub const RIGHT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new
 pub const SENDER_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.sender_font_size");
 pub const CONTENT_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.content_font_size");
 pub const DATETIME_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.datetime_font_size");
-pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.header_font_bolded");
+pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.metadata_font_bolded");
 pub const COMPACT_DATETIME_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.compact_datetime");
 pub const SENDER_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.sender_color");
 pub const DATETIME_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.datetime_color");
@@ -44,12 +45,12 @@ struct AppState {
     timeline_data: im::Vector<MessageGroup>,
     profile_pics: im::Vector<ImageBuf>,
     layout_settings: LayoutSettings,
+    settings_open: bool,
 }
 
 #[derive(Clone, druid::Data, druid::Lens)]
 struct LayoutSettings {
     item_layout: ItemLayoutOption,
-    settings_open: bool,
     picture_shape: PictureShape,
     picture_size: f64,
     chat_bubble_tail_shape: TailShape,
@@ -58,6 +59,7 @@ struct LayoutSettings {
     show_self_pic: bool,
     bubble_padding: f64,
     metadata_content_spacing: f64,
+    align_to_picture: bool,
     item_spacing: f64,
     show_left_line: bool,
     left_spacing: f64,
@@ -66,10 +68,66 @@ struct LayoutSettings {
     content_font_size: f64,
     sender_font_size: f64,
     datetime_font_size: f64,
-    header_font_bolded: bool,
+    metadata_font_bolded: bool,
     compact_datetime: bool,
     sender_color: SimpleColor,
     datetime_color: SimpleColor,
+}
+
+impl LayoutSettings {
+    fn from_env(env: &druid::Env) -> LayoutSettings{
+        let sender_color = env.get(SENDER_COLOR_KEY).as_rgba8();
+        let datetime_color = env.get(DATETIME_COLOR_KEY).as_rgba8();
+        LayoutSettings {
+            item_layout: num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index"),
+            picture_shape: num_traits::FromPrimitive::from_u64(env.get(crate::PICTURE_SHAPE_KEY)).expect("Invalid layout index"),
+            picture_size: env.get(crate::PICTURE_SIZE_KEY),
+            chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid layout index"),
+            chat_bubble_radius: env.get(CHAT_BUBBLE_RADIUS_KEY),
+            chat_bubble_picture_spacing: env.get(CHAT_BUBBLE_IMG_SPACING_KEY),
+            show_self_pic: env.get(SHOW_SELF_PROFILE_PIC_KEY),
+            bubble_padding: env.get(BUBBLE_PADDING_KEY),
+            metadata_content_spacing: env.get(METADATA_CONTENT_SPACING_KEY),
+            align_to_picture: env.get(ALIGN_TO_PICTURE),
+            item_spacing: env.get(ITEM_SPACING_KEY),
+            show_left_line: env.get(SHOW_LEFT_LINE_KEY),
+            left_spacing: env.get(LEFT_SPACING_KEY),
+            left_bubble_flipped: env.get(LEFT_BUBBLE_FLIPPED_KEY),
+            right_bubble_flipped: env.get(RIGHT_BUBBLE_FLIPPED_KEY),
+            content_font_size: env.get(CONTENT_FONT_SIZE_KEY),
+            sender_font_size: env.get(SENDER_FONT_SIZE_KEY),
+            datetime_font_size: env.get(DATETIME_FONT_SIZE_KEY),
+            metadata_font_bolded: env.get(HEADER_FONT_BOLDED_KEY),
+            compact_datetime: env.get(COMPACT_DATETIME_KEY),
+            sender_color: SimpleColor { r: sender_color.0, g: sender_color.1, b: sender_color.2 },
+            datetime_color: SimpleColor { r: datetime_color.0, g: datetime_color.1, b: datetime_color.2 },
+        }
+    }
+
+    fn set_env(&self, env: &mut druid::Env) {
+        env.set(ITEM_LAYOUT_KEY, self.item_layout as u64);
+        env.set(PICTURE_SHAPE_KEY, self.picture_shape as u64);
+        env.set(PICTURE_SIZE_KEY, self.picture_size as f64);
+        env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, self.chat_bubble_tail_shape as u64);
+        env.set(CHAT_BUBBLE_RADIUS_KEY, self.chat_bubble_radius as f64);
+        env.set(CHAT_BUBBLE_IMG_SPACING_KEY, self.chat_bubble_picture_spacing as f64);
+        env.set(SHOW_SELF_PROFILE_PIC_KEY, self.show_self_pic);
+        env.set(BUBBLE_PADDING_KEY, self.bubble_padding as f64);
+        env.set(METADATA_CONTENT_SPACING_KEY, self.metadata_content_spacing as f64);
+        env.set(ALIGN_TO_PICTURE, self.align_to_picture as bool);
+        env.set(ITEM_SPACING_KEY, self.item_spacing as f64);
+        env.set(SHOW_LEFT_LINE_KEY, self.show_left_line as bool);
+        env.set(LEFT_SPACING_KEY, self.left_spacing as f64);
+        env.set(LEFT_BUBBLE_FLIPPED_KEY, self.left_bubble_flipped as bool);
+        env.set(RIGHT_BUBBLE_FLIPPED_KEY, self.right_bubble_flipped as bool);
+        env.set(CONTENT_FONT_SIZE_KEY, self.content_font_size as f64);
+        env.set(SENDER_FONT_SIZE_KEY, self.sender_font_size as f64);
+        env.set(DATETIME_FONT_SIZE_KEY, self.datetime_font_size as f64);
+        env.set(HEADER_FONT_BOLDED_KEY, self.metadata_font_bolded as bool);
+        env.set(COMPACT_DATETIME_KEY, self.compact_datetime as bool);
+        env.set(SENDER_COLOR_KEY, self.sender_color.to_druid_color());
+        env.set(DATETIME_COLOR_KEY, self.datetime_color.to_druid_color());
+    }
 }
 
 #[derive(Clone, druid::Data, druid::Lens)]
@@ -139,7 +197,7 @@ impl AppDelegate<AppState> for Delegate {
 
     fn window_removed(&mut self, _id: druid::WindowId, data: &mut AppState, _env: &druid::Env, _ctx: &mut druid::DelegateCtx) {
         self.window_count -= 1;
-        data.layout_settings.settings_open = false;
+        data.settings_open = false;
         if self.window_count <= 0 {
             println!("All windows closed. Quitting...");
             druid::Application::global().quit();
@@ -150,10 +208,10 @@ impl AppDelegate<AppState> for Delegate {
 fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid::Env) {
     println!("Settings click");
 
-    if state.layout_settings.settings_open {
+    if state.settings_open {
         println!("Settings already open. Ignoring.");
     } else {
-        state.layout_settings.settings_open = true; // Prevent it from being opened a second time
+        state.settings_open = true; // Prevent it from being opened a second time
         let settings_size = druid::Size::new(1400.0, 480.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
@@ -195,13 +253,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 1.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 6.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
@@ -218,13 +277,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 6.5;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 7.0;
             settings.item_spacing = 10.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
@@ -241,13 +301,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 0.5;
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 3.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 10.0;
             settings.datetime_font_size = 10.0;
@@ -264,13 +325,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 6.5;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 7.0;
             settings.item_spacing = 10.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = true;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
@@ -287,13 +349,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 8.0;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 5.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = true;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 12.0;
             settings.datetime_font_size = 11.0;
@@ -310,13 +373,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 7.5;
             settings.item_spacing = 10.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
@@ -333,13 +397,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 10.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
@@ -356,13 +421,14 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 6.0;
             settings.show_self_pic = false;
             settings.metadata_content_spacing = 5.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
             settings.item_spacing = 9.5;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
             settings.right_bubble_flipped = true;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 14.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
@@ -376,11 +442,12 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 40.0;
             settings.chat_bubble_picture_spacing = 13.0;
             settings.metadata_content_spacing = 7.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 23.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 14.0;
             settings.sender_font_size = 14.0;
             settings.datetime_font_size = 11.0;
@@ -394,11 +461,12 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 36.0;
             settings.chat_bubble_picture_spacing = 8.0;
             settings.metadata_content_spacing = 7.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 13.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
@@ -412,11 +480,12 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_size = 36.0;
             settings.chat_bubble_picture_spacing = 5.5;
             settings.metadata_content_spacing = 5.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 14.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
@@ -431,11 +500,12 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 2.5;
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
             settings.item_spacing = 7.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
-            settings.header_font_bolded = true;
+            settings.metadata_font_bolded = true;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
@@ -450,11 +520,32 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 3.0;
+            settings.align_to_picture = false;
             settings.item_spacing = 6.0;
             settings.bubble_padding = 6.0;
             settings.show_left_line = true;
             settings.left_spacing = 4.0;
-            settings.header_font_bolded = false;
+            settings.metadata_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 13.0;
+            settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+        },
+        PredefiendLayout::SpacedIRC => {
+            settings.item_layout = ItemLayoutOption::IRCStyle;
+            settings.picture_shape = PictureShape::Rectangle;
+            settings.picture_size = 16.0;
+            settings.chat_bubble_picture_spacing = 3.5;
+            settings.show_self_pic = true;
+            settings.metadata_content_spacing = 6.0;
+            settings.align_to_picture = false;
+            settings.item_spacing = 12.0;
+            settings.bubble_padding = 6.0;
+            settings.show_left_line = true;
+            settings.left_spacing = 4.5;
+            settings.metadata_font_bolded = false;
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
@@ -547,27 +638,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
         .must_fill_main_axis(true);
     widget::EnvScope::new(
         |env: &mut druid::env::Env, data: &AppState| {
-            env.set(ITEM_LAYOUT_KEY, data.layout_settings.item_layout as u64);
-            env.set(IMAGE_SHAPE_KEY, data.layout_settings.picture_shape as u64);
-            env.set(IMAGE_SIZE_KEY, data.layout_settings.picture_size as f64);
-            env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, data.layout_settings.chat_bubble_tail_shape as u64);
-            env.set(CHAT_BUBBLE_RADIUS_KEY, data.layout_settings.chat_bubble_radius as f64);
-            env.set(CHAT_BUBBLE_IMG_SPACING_KEY, data.layout_settings.chat_bubble_picture_spacing as f64);
-            env.set(SHOW_SELF_PROFILE_PIC, data.layout_settings.show_self_pic);
-            env.set(BUBBLE_PADDING_KEY, data.layout_settings.bubble_padding as f64);
-            env.set(METADATA_CONTENT_SPACING_KEY, data.layout_settings.metadata_content_spacing as f64);
-            env.set(ITEM_SPACING_KEY, data.layout_settings.item_spacing as f64);
-            env.set(SHOW_LEFT_LINE_KEY, data.layout_settings.show_left_line as bool);
-            env.set(LEFT_SPACING_KEY, data.layout_settings.left_spacing as f64);
-            env.set(LEFT_BUBBLE_FLIPPED_KEY, data.layout_settings.left_bubble_flipped as bool);
-            env.set(RIGHT_BUBBLE_FLIPPED_KEY, data.layout_settings.right_bubble_flipped as bool);
-            env.set(CONTENT_FONT_SIZE_KEY, data.layout_settings.content_font_size as f64);
-            env.set(SENDER_FONT_SIZE_KEY, data.layout_settings.sender_font_size as f64);
-            env.set(DATETIME_FONT_SIZE_KEY, data.layout_settings.datetime_font_size as f64);
-            env.set(HEADER_FONT_BOLDED_KEY, data.layout_settings.header_font_bolded as bool);
-            env.set(COMPACT_DATETIME_KEY, data.layout_settings.compact_datetime as bool);
-            env.set(SENDER_COLOR_KEY, data.layout_settings.sender_color.to_druid_color());
-            env.set(DATETIME_COLOR_KEY, data.layout_settings.datetime_color.to_druid_color());
+            data.layout_settings.set_env(env);
         },
         layout
     )
@@ -588,6 +659,7 @@ pub enum PredefiendLayout {
     CompactDiscord,
     Compact,
     IRC,
+    SpacedIRC,
 }
 
 
@@ -713,6 +785,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("Modern IRC")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::IRC, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Spaced Modern IRC")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::SpacedIRC, data);
                                 })
                         )
                         .cross_axis_alignment(widget::CrossAxisAlignment::Fill)
@@ -983,6 +1061,24 @@ fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
         )
         .with_spacer(10.0)
         .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Align to Pic:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::align_to_picture)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+            .disabled_if(|data, _| data.item_layout == ItemLayoutOption::BubbleExternBottomMeta
+                || data.item_layout == ItemLayoutOption::BubbleInternalBottomMeta
+                || data.item_layout == ItemLayoutOption::BubbleInternalTopMeta
+            )
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
             .with_flex_child(widget::Label::new("Content Font Size:").align_right()
             , 0.7)
             .with_default_spacer()
@@ -1089,14 +1185,15 @@ fn main() -> Result<(), PlatformError> {
         text_edit: "".to_string().into(),
         timeline_data: im::vector![],
         profile_pics: im::vector![],
+        settings_open: false,
         layout_settings: LayoutSettings {
             item_layout: ItemLayoutOption::BubbleExternBottomMeta,
-            settings_open: false,
             picture_shape: PictureShape::Circle,
             picture_size: 32.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
             chat_bubble_radius: 4.0,
             chat_bubble_picture_spacing: 3.5,
+            align_to_picture: true,
             show_self_pic: true,
             bubble_padding: 5.0,
             metadata_content_spacing: 1.0,
@@ -1108,7 +1205,7 @@ fn main() -> Result<(), PlatformError> {
             content_font_size: 13.0,
             sender_font_size: 11.0,
             datetime_font_size: 11.0,
-            header_font_bolded: false,
+            metadata_font_bolded: false,
             compact_datetime: true,
             sender_color: SimpleColor { r: 175, g: 175, b: 175 },
             datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
