@@ -7,7 +7,6 @@ use druid::Point;
 use druid;
 use crate::MessageGroup;
 use crate::LayoutSettings;
-use num_traits;
 use num_derive;
 
 extern crate chrono;
@@ -224,6 +223,10 @@ impl TimelineItemWidget {
 }
 
 impl LayoutSettings {
+    
+    /// Gets the font for the title
+    /// 
+    /// It is semi-bolded when the settings specify that it should be.
     fn get_metadata_font_descriptor(&self) -> druid::FontDescriptor {
         druid::FontDescriptor::new(druid::FontFamily::SYSTEM_UI)
             .with_weight(
@@ -235,6 +238,8 @@ impl LayoutSettings {
             )
     }
 
+    /// It returns true when the layout specifies that it is a bubble
+    /// A bubble has padding on all sides of the content, and a background is drawn behind it.
     fn is_bubble(&self) -> bool {
         match self.item_layout {
             ItemLayoutOption::BubbleExternBottomMeta | ItemLayoutOption::BubbleInternalBottomMeta
@@ -244,6 +249,9 @@ impl LayoutSettings {
             _ => false
         }
     }
+
+    /// A bubble is flipped when the tail and profile picture is on the
+    /// bottom instead of the top.
     fn is_bubble_flipped(&self, is_self_user: bool) -> bool {
         if is_self_user {
             self.right_bubble_flipped
@@ -251,6 +259,9 @@ impl LayoutSettings {
             self.left_bubble_flipped
         }
     }
+
+    /// Gets the proper width of a profile picture
+    /// If there is no profile picture given the current situation or setting, it returns 0.0
     fn actual_profile_pic_width(&self, is_self_user: bool) -> f64 {
         if self.show_picture(is_self_user) {
             // profile pic is shown always when not self, and when configured when self.
@@ -261,8 +272,8 @@ impl LayoutSettings {
         }
     }
 
-    // Offset in the case of tiny flipped bubbles with tails, since tiny
-    // messages cause the tail to not align with the picture properly
+    /// Offset in the case of tiny flipped bubbles with tails, since tiny
+    /// messages cause the tail to not align with the picture properly
     fn get_top_y_offset(&self, is_self_user: bool, sender_label_size: &Size, msg_label_size: &Size) -> f64 {
         if self.is_bubble() && self.is_bubble_flipped(is_self_user) {
             let mut space_taken = 2.0 * self.bubble_padding + msg_label_size.height;
@@ -280,19 +291,22 @@ impl LayoutSettings {
         }
     }
 
-    // Includes the profile pic and the space between the message or bubble.
+    /// Gets the width of the profile pic and the space between it and the message or bubble.
     fn get_profile_pic_area_width(&self, is_self_user: bool) -> f64 {
         self.actual_profile_pic_width(is_self_user) + self.chat_bubble_picture_spacing
     }
 
-    // Returns true when the content will not be vertically stacked, but instead horizontally aligned.
+    /// Returns true when the content will not be vertically stacked, but instead horizontally aligned.
     fn is_side_by_side(&self, space_available: &BoxConstraints) -> bool {
         self.item_layout == ItemLayoutOption::IRCStyle && space_available.max().width > IRC_STACK_WIDTH
     }
 
-    // The area that the content can take up.
-    // Under most layouts, that's the total width minus the space taken up by
-    // the profile pic and the space between it and the content.
+    /// The area that the content can take up.
+    /// 
+    /// Under most layouts, that's the total width minus the space taken up by
+    /// the profile pic and the space between it and the content.
+    /// 
+    /// In side by side, it's the total width minus the width of the IRC header.
     fn get_available_content_width(&self, space_available: &BoxConstraints, is_self_user: bool) -> f64 {
         let mut width: f64 = space_available.max().width - self.left_spacing;
         width -= if self.is_side_by_side(space_available) {
@@ -305,10 +319,19 @@ impl LayoutSettings {
         }
         width
     }
+
+    /// Returns the available bounding area for the content.
+    /// 
+    /// The min is set to zero space, and the max is the max height and
+    /// the width is the width provided by [get_available_content_width()]
     fn get_available_content_area(&self, space_available: &BoxConstraints, is_self_user: bool) -> BoxConstraints {
         to_full_height_area(self.get_available_content_width(space_available, is_self_user), space_available)
     }
 
+    /// Returns the available bounding area for the content.
+    /// 
+    /// The min is set to zero space, and the max is the max height and
+    /// the width is either the total width minus the left spacing, or the IRC width minus the picture size
     fn get_sender_label_area(&self, space_available: &BoxConstraints) -> BoxConstraints {
         let width = if self.is_side_by_side(space_available) {
             IRC_HEADER_WIDTH - self.picture_size
@@ -318,6 +341,12 @@ impl LayoutSettings {
         to_full_height_area(width, space_available)
     }
 
+    /// Gets the unpadded content x left position
+    /// This is how far right the content needs to move right
+    /// Depending on the layout and content, it can be left or right aligned.
+    /// 
+    /// If left aligned, it is just pushed to the right of the profile pic and its padding.
+    /// If right aligned, it subtracts the content size from the available space.
     fn get_unpadded_content_x_left_position(&self, is_self_user: bool, space_available: &BoxConstraints,
         actual_max_content_width: f64, total_metadata_width: f64) -> f64
     {
@@ -338,6 +367,9 @@ impl LayoutSettings {
             self.get_profile_pic_area_width(is_self_user)
         }
     }
+
+    /// Gets the origin position for the content, taking into account things including padding,
+    /// layout, and the size of other items.
     fn get_content_origin(&self, is_self_user: bool, space_available: &BoxConstraints, y_top_offset: f64,
         widest_msg_content: f64, total_metadata_width: f64, metadata_height: f64) -> Point
     {
@@ -353,7 +385,9 @@ impl LayoutSettings {
             },
             ItemLayoutOption::BubbleInternalTopMeta => {
                 Point::new(
+                    // Align to left inside of bubble
                     content_x_start + self.bubble_padding,
+                    // Near the top, below metadata and padding
                     y_top_offset + self.bubble_padding * 2.0 + metadata_height
                 )
             },
@@ -373,16 +407,19 @@ impl LayoutSettings {
                 // is less than the height of the meta label
                 Point::new(
                     if self.align_to_picture {
-                        content_x_start
+                        content_x_start // Nothing special. Just aligned to context x start.
                     } else {
-                        0.0
+                        0.0 // All the way to the left
                     },
+                    // Just below the metadata
                     metadata_height + self.metadata_content_spacing + y_top_offset
                 )
             }
         }
     }
 
+    /// Gets the origin position for the sender, taking into account things including padding,
+    /// layout, and the size of other items.
     fn get_sender_origin(&self, is_self_user: bool, space_available: &BoxConstraints,
         total_metadata_width: f64, total_msg_height: f64, widest_msg_width: f64, y_top_offset: f64) -> Point
     {
@@ -416,6 +453,8 @@ impl LayoutSettings {
         }
     }
 
+    /// Gets the total height of a timeline item widget.
+    /// Accounts for everything, including layout, content sizes, other label sizes, and padding.
     fn get_total_height(&self, space_available: &BoxConstraints, sender_label_size: &Size,
         msg_label_size: &Size, y_top_offset: f64) -> f64
     {
@@ -423,9 +462,9 @@ impl LayoutSettings {
             sender_label_size.height.max(msg_label_size.height) + y_top_offset
         } else {
             y_top_offset + msg_label_size.height + sender_label_size.height + self.metadata_content_spacing + if self.is_bubble() {
-                2.0 * self.bubble_padding
+                2.0 * self.bubble_padding // total height of padding (both top and bottom).
             } else {
-                0.0
+                0.0 // Not a bubble, so no padding.
             }
         }
     }
@@ -443,6 +482,9 @@ impl LayoutSettings {
     }
 }
 
+/// A convenience function to convert the width to a BoxConstraints that has the input width
+/// as the max width, and the maximum height.
+/// The minimum height and width are set to zero. 
 fn to_full_height_area(width: f64, space_available: &BoxConstraints) -> BoxConstraints {
     BoxConstraints::new(
         Size::new(0.0, 0.0),
@@ -573,7 +615,7 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         // Next, the profile pic
         self.draw_profile_pic(ctx, data, &settings, is_self_user);
         // Now the little arrow/tail that goes from the image to the bubble
-        self.draw_bubble_tail(ctx, env, &settings, is_self_user);
+        self.draw_bubble_tail(ctx, &settings, is_self_user);
         // Now draw the line to left of content, if enabled
         self.draw_left_line(ctx, &settings);
     }
@@ -630,30 +672,20 @@ impl TimelineItemWidget {
         }
     }
 
-    fn draw_bubble_tail(&self, ctx: &mut PaintCtx, env: &druid::Env, settings: &LayoutSettings, is_self_user: bool) {
+    fn draw_bubble_tail(&self, ctx: &mut PaintCtx, settings: &LayoutSettings, is_self_user: bool) {
         if settings.is_bubble() {
-            let tail_shape_int = env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY);
-            let tail_shape: TailShape = num_traits::FromPrimitive::from_u64(tail_shape_int).expect("Invalid tail shape");
             let (bubble_x0, bubble_x1, bubble_y0, bubble_y1) = self.get_bubble_dimensions(settings);
 
             let is_flipped = settings.is_bubble_flipped(is_self_user);
-            let tail_y_position = if is_flipped {
-                bubble_y1
-            } else {
-                bubble_y0
-            };
-            let tail_x_position = if is_self_user {
-                bubble_x1
-            } else {
-                bubble_x0
-            };
+            let tail_y_position = if is_flipped { bubble_y1 } else { bubble_y0 };
+            let tail_x_position = if is_self_user { bubble_x1 } else { bubble_x0 };
             let bubble_color = self.get_bubble_color(is_self_user);
             
-            if tail_shape != TailShape::Hidden {
+            if settings.chat_bubble_tail_shape != TailShape::Hidden {
                 ctx.fill(make_tail_path(
                     tail_x_position,
                     tail_y_position,
-                    tail_shape,
+                    settings.chat_bubble_tail_shape,
                     is_self_user,
                     is_flipped
                 ), &bubble_color);
