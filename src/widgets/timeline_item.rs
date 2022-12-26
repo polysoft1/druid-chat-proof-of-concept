@@ -1,11 +1,11 @@
 use druid::kurbo::{Circle, RoundedRect, Rect, BezPath};
 use druid::widget::prelude::*;
-use druid::{Widget, widget};
+use druid::{Widget, widget, WidgetExt};
 use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
 use druid;
-use crate::MessageGroup;
+use crate::{Message, MessageGroup};
 use crate::LayoutSettings;
 use num_derive;
 
@@ -13,7 +13,7 @@ extern crate chrono;
 use chrono::{ Datelike, TimeZone, Timelike};
 
 pub struct TimelineItemWidget {
-    msg_content_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
+    msg_content_labels: WidgetPod<MessageGroup, Box<dyn Widget<MessageGroup>>>,
     sender_name_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
     datetime_label: WidgetPod<MessageGroup, widget::Label<MessageGroup>>,
 }
@@ -193,11 +193,6 @@ fn timestamp_to_display_msg(epoch: i64, compact: bool) -> String {
 
 impl TimelineItemWidget {
     pub fn new() -> Self {
-        let msg_content_label = WidgetPod::new(
-            widget::Label::new(|item: &MessageGroup, _env: &_| item.message.clone())
-                .with_line_break_mode(widget::LineBreaking::WordWrap)
-                .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
-            );
         let sender_name_label = WidgetPod::new(
             widget::Label::new(|item: &MessageGroup, _env: &_| {
                 let mut username = "User".to_string();
@@ -208,13 +203,30 @@ impl TimelineItemWidget {
         );
         let datetime_label = WidgetPod::new(
             widget::Label::new(|item: &MessageGroup, env: &Env| {
-                timestamp_to_display_msg(item.timestamp_epoch_seconds,
-                    env.get(crate::COMPACT_DATETIME_KEY)).to_string()
-        })
+                if item.messages.len() > 0 {
+                    timestamp_to_display_msg(item.messages[0].timestamp_epoch_seconds,
+                        env.get(crate::COMPACT_DATETIME_KEY)).to_string()
+                } else {
+                    "Invalid".to_string()
+                }
+            }
+        )
             .with_line_break_mode(widget::LineBreaking::WordWrap)
         );
+        let msg_content_labels_list = widget::List::new(|| {
+            widget::Label::new(|item: &Message, _env: &_| {
+                item.message.to_string()
+            })
+            .with_line_break_mode(widget::LineBreaking::WordWrap)
+            .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
+        });
+        let msg_content_labels = WidgetPod::new(
+            // Boxed is needed to make it so you don't get buried in type annotations.
+            msg_content_labels_list.lens(MessageGroup::messages).boxed()
+        );
         Self {
-            msg_content_label: msg_content_label,
+            msg_content_labels: msg_content_labels,
+            //msg_content_labels: Vec::new(),
             sender_name_label: sender_name_label,
             datetime_label: datetime_label,
         }
@@ -501,8 +513,9 @@ impl Widget<MessageGroup> for TimelineItemWidget {
                 ctx.request_paint();
             }
             _ => {
-                self.msg_content_label.event(ctx, event, data, env);
+                self.msg_content_labels.event(ctx, event, data, env);
                 self.sender_name_label.event(ctx, event, data, env);
+                self.datetime_label.event(ctx, event, data, env);
             }
         }
     }
@@ -520,13 +533,13 @@ impl Widget<MessageGroup> for TimelineItemWidget {
             },
             _ => {}
         }
-        self.msg_content_label.lifecycle(ctx, event, data, env);
+        self.msg_content_labels.lifecycle(ctx, event, data, env);
         self.sender_name_label.lifecycle(ctx, event, data, env);
         self.datetime_label.lifecycle(ctx, event, data, env);
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &MessageGroup, data: &MessageGroup, env: &Env) {
-        self.msg_content_label.update(ctx, data, env);
+        self.msg_content_labels.update(ctx, data, env);
         self.sender_name_label.update(ctx, data, env);
         self.datetime_label.update(ctx, data, env);
     }
@@ -559,30 +572,29 @@ impl Widget<MessageGroup> for TimelineItemWidget {
             layout_ctx, &settings.get_sender_label_area(bc),
             data, env
         );
-        let msg_label_size = self.msg_content_label.layout(
-            layout_ctx,
-            &settings.get_available_content_area(bc, is_self_user),
-            data, env
-        );
+
+        let msg_label_list_size = self.msg_content_labels.layout(
+            layout_ctx, &settings.get_available_content_area(bc, is_self_user),
+            data, env);
         let total_metadata_width = sender_label_size.width + datetime_label_size.width;
 
         // Offset in the case of tiny flipped bubbles with tails, since tiny
         // messages cause the tail to not align with the picture properly
-        let y_top_offset = settings.get_top_y_offset(is_self_user, &sender_label_size, &msg_label_size);
+        let y_top_offset = settings.get_top_y_offset(is_self_user, &sender_label_size, &msg_label_list_size);
 
-        self.msg_content_label.set_origin(layout_ctx, data, env,
+        self.msg_content_labels.set_origin(layout_ctx, data, env,
             settings.get_content_origin(
                 is_self_user,
                 bc,
                 y_top_offset,
-                msg_label_size.width,
+                msg_label_list_size.width,
                 total_metadata_width,
                 sender_label_size.height
             )
         );
 
         let sender_label_origin = settings.get_sender_origin(is_self_user, bc, total_metadata_width, 
-            msg_label_size.height, msg_label_size.width, y_top_offset);
+            msg_label_list_size.height, msg_label_list_size.width, y_top_offset);
 
         // Position to right of sender. Also account for differences in height.
         let datetime_label_origin = Point::new(sender_label_origin.x + sender_label_size.width,
@@ -593,7 +605,7 @@ impl Widget<MessageGroup> for TimelineItemWidget {
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        Size::new(bc.max().width, settings.get_total_height(bc, &sender_label_size, &msg_label_size, y_top_offset))
+        Size::new(bc.max().width, settings.get_total_height(bc, &sender_label_size, &msg_label_list_size, y_top_offset))
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &MessageGroup, env: &Env) {
@@ -604,11 +616,11 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.draw_bubble_background(ctx, &settings, is_self_user);
         // Draw hot background (for when user's mouse is hovering over it)
         if ctx.is_hot() {
-            ctx.fill(self.msg_content_label.layout_rect(), &Color::rgba8(255, 255, 255, 20));
+            ctx.fill(self.msg_content_labels.layout_rect(), &Color::rgba8(255, 255, 255, 20));
         }
 
         // Draw text
-        self.msg_content_label.paint(ctx, data, env);
+        self.msg_content_labels.paint(ctx, data, env);
         self.sender_name_label.paint(ctx, data, env);
         self.datetime_label.paint(ctx, data, env);
 
@@ -623,10 +635,11 @@ impl Widget<MessageGroup> for TimelineItemWidget {
 }
 
 impl TimelineItemWidget {
-    // Gets the total space taken up by all labels in the bubble, minus the padding. 
-    // Return order: x0, x1, y0, y1
+
+    /// Gets the total space taken up by all labels in the bubble, minus the padding. 
+    /// Return order: x0, x1, y0, y1
     fn get_bubble_dimensions(&self, settings: &LayoutSettings) -> (f64, f64, f64, f64) {
-        let content_label_rect = self.msg_content_label.layout_rect();
+        let content_label_rect = self.msg_content_labels.layout_rect();
         let sender_label_rect = self.sender_name_label.layout_rect();
         let datetime_label_rect = self.datetime_label.layout_rect();
         let mut bubble_x0 = content_label_rect.x0 - settings.left_spacing;
@@ -743,7 +756,7 @@ impl TimelineItemWidget {
 
     fn draw_left_line(&self, ctx: &mut PaintCtx, settings: &LayoutSettings) {
         if settings.show_left_line {
-            let content_label_rect = self.msg_content_label.layout_rect();
+            let content_label_rect = self.msg_content_labels.layout_rect();
             let line_x0 = content_label_rect.x0 - settings.left_spacing;
             let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 1.0, content_label_rect.y1);
             ctx.fill(line_rect, &Color::GRAY);

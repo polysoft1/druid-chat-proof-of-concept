@@ -143,12 +143,11 @@ impl SimpleColor {
     }
 }
 
-#[derive(Clone, druid::Data)]
+#[derive(Clone, druid::Data, druid::Lens)]
 struct MessageGroup {
     user_id: u32,
-    message: String,
-    timestamp_epoch_seconds: i64,
     profile_pic: ImageBuf,
+    messages: im::Vector<Message>,
 }
 
 #[derive(Clone, druid::Data)]
@@ -225,10 +224,16 @@ fn on_send_icon_click(_ctx: &mut EventCtx, state: &mut AppState, env: &druid::En
     // Find which user is self
     let self_id = env.get(SELF_USER_ID_KEY);
 
+    // TODO: Check to see if last thing in the timeline is a message from
+    // self user to append to existing group.
     state.timeline_data.push_back(
         MessageGroup {
-            message: state.text_edit.to_string(),
-            timestamp_epoch_seconds: chrono::offset::Local::now().timestamp(),
+            messages: im::vector![
+                Message {
+                    message: state.text_edit.to_string(),
+                    timestamp_epoch_seconds: chrono::offset::Local::now().timestamp()
+                }
+            ],
             user_id: self_id as u32,
             profile_pic: state.profile_pics[self_id as usize].clone(),
         }
@@ -1240,8 +1245,24 @@ fn main() -> Result<(), PlatformError> {
         msg_body.push_str(" Appended!");
         let user_id = rng.gen_range(0..5);
         let msg = MessageGroup {
-            timestamp_epoch_seconds: time,
-            message: msg_body.clone(),
+            messages: im::vector![
+                Message {
+                    message: msg_body.clone(),
+                    timestamp_epoch_seconds: time,
+                },
+                Message {
+                    message: "Second message".to_string(),
+                    timestamp_epoch_seconds: time + 5
+                },
+                Message {
+                    message: "Third message".to_string(),
+                    timestamp_epoch_seconds: time + 6
+                },
+                Message {
+                    message: "Fourth message".to_string(),
+                    timestamp_epoch_seconds: time + 7
+                },
+            ],
             user_id: user_id,
             profile_pic: initial_state.profile_pics[user_id as usize].clone(),
         };
@@ -1251,16 +1272,24 @@ fn main() -> Result<(), PlatformError> {
     }
     let user_id = rng.gen_range(0..5);
     let msg = MessageGroup {
-        timestamp_epoch_seconds: time,
-        message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
+        messages: im::vector![
+            Message {
+                timestamp_epoch_seconds: time,
+                message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
+            },
+        ],
         user_id: user_id,
         profile_pic: initial_state.profile_pics[user_id as usize].clone(),
     };
     initial_state.timeline_data.push_front(msg);
     let user_id = rng.gen_range(0..5);
     let msg = MessageGroup {
-        timestamp_epoch_seconds: time,
-        message: "Hi".to_string(),
+        messages: im::vector![
+                Message {
+                    timestamp_epoch_seconds: time,
+                    message: "Hi".to_string(),
+                },
+        ],
         user_id: user_id,
         profile_pic: initial_state.profile_pics[user_id as usize].clone(),
     };
