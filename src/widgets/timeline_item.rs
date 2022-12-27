@@ -219,14 +219,13 @@ impl TimelineItemWidget {
             })
             .with_line_break_mode(widget::LineBreaking::WordWrap)
             .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
-        });
+        }).with_spacing(crate::SINGLE_MESSAGE_SPACING_KEY);
         let msg_content_labels = WidgetPod::new(
             // Boxed is needed to make it so you don't get buried in type annotations.
             msg_content_labels_list.lens(MessageGroup::messages).boxed()
         );
         Self {
             msg_content_labels: msg_content_labels,
-            //msg_content_labels: Vec::new(),
             sender_name_label: sender_name_label,
             datetime_label: datetime_label,
         }

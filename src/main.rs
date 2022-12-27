@@ -23,7 +23,8 @@ pub const SHOW_SELF_PROFILE_PIC_KEY: druid::env::Key<bool> = druid::env::Key::ne
 pub const BUBBLE_PADDING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_padding");
 pub const METADATA_CONTENT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.metadata_content_padding");
 pub const ALIGN_TO_PICTURE: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.align-to-picture");
-pub const ITEM_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.item_spacing");
+pub const GROUP_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.group_spacing");
+pub const SINGLE_MESSAGE_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.single_message_spacing");
 pub const SHOW_LEFT_LINE_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_left_line");
 pub const LEFT_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_spacing");
 pub const LEFT_BUBBLE_FLIPPED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.left_bubble_flipped");
@@ -60,7 +61,8 @@ struct LayoutSettings {
     bubble_padding: f64,
     metadata_content_spacing: f64,
     align_to_picture: bool,
-    item_spacing: f64,
+    group_spacing: f64,
+    single_message_spacing: f64,
     show_left_line: bool,
     left_spacing: f64,
     left_bubble_flipped: bool,
@@ -89,7 +91,8 @@ impl LayoutSettings {
             bubble_padding: env.get(BUBBLE_PADDING_KEY),
             metadata_content_spacing: env.get(METADATA_CONTENT_SPACING_KEY),
             align_to_picture: env.get(ALIGN_TO_PICTURE),
-            item_spacing: env.get(ITEM_SPACING_KEY),
+            group_spacing: env.get(GROUP_SPACING_KEY),
+            single_message_spacing: env.get(SINGLE_MESSAGE_SPACING_KEY),
             show_left_line: env.get(SHOW_LEFT_LINE_KEY),
             left_spacing: env.get(LEFT_SPACING_KEY),
             left_bubble_flipped: env.get(LEFT_BUBBLE_FLIPPED_KEY),
@@ -115,7 +118,8 @@ impl LayoutSettings {
         env.set(BUBBLE_PADDING_KEY, self.bubble_padding as f64);
         env.set(METADATA_CONTENT_SPACING_KEY, self.metadata_content_spacing as f64);
         env.set(ALIGN_TO_PICTURE, self.align_to_picture as bool);
-        env.set(ITEM_SPACING_KEY, self.item_spacing as f64);
+        env.set(GROUP_SPACING_KEY, self.group_spacing as f64);
+        env.set(SINGLE_MESSAGE_SPACING_KEY, self.single_message_spacing as f64);
         env.set(SHOW_LEFT_LINE_KEY, self.show_left_line as bool);
         env.set(LEFT_SPACING_KEY, self.left_spacing as f64);
         env.set(LEFT_BUBBLE_FLIPPED_KEY, self.left_bubble_flipped as bool);
@@ -260,7 +264,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 1.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
-            settings.item_spacing = 6.0;
+            settings.group_spacing = 6.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -284,7 +289,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 7.0;
-            settings.item_spacing = 10.0;
+            settings.group_spacing = 10.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -308,7 +314,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 3.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
-            settings.item_spacing = 9.5;
+            settings.group_spacing = 9.5;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -332,7 +339,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 7.0;
-            settings.item_spacing = 10.0;
+            settings.group_spacing = 10.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = true;
@@ -356,7 +364,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 5.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
-            settings.item_spacing = 9.5;
+            settings.group_spacing = 9.5;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = true;
@@ -380,7 +389,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 7.5;
-            settings.item_spacing = 10.0;
+            settings.group_spacing = 10.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -404,7 +414,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
-            settings.item_spacing = 10.0;
+            settings.group_spacing = 10.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -428,7 +439,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 5.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 5.0;
-            settings.item_spacing = 9.5;
+            settings.group_spacing = 9.5;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.left_bubble_flipped = false;
@@ -449,7 +461,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 7.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
-            settings.item_spacing = 23.0;
+            settings.group_spacing = 23.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.metadata_font_bolded = true;
@@ -468,7 +481,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 7.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
-            settings.item_spacing = 13.0;
+            settings.group_spacing = 13.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.metadata_font_bolded = true;
@@ -487,7 +501,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 5.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
-            settings.item_spacing = 14.0;
+            settings.group_spacing = 14.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.metadata_font_bolded = true;
@@ -507,7 +522,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.metadata_content_spacing = 2.0;
             settings.align_to_picture = true;
             settings.bubble_padding = 0.0;
-            settings.item_spacing = 7.0;
+            settings.group_spacing = 7.0;
+            settings.single_message_spacing = 5.0;
             settings.show_left_line = false;
             settings.left_spacing = 0.0;
             settings.metadata_font_bolded = true;
@@ -526,7 +542,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 3.0;
             settings.align_to_picture = false;
-            settings.item_spacing = 6.0;
+            settings.group_spacing = 6.0;
+            settings.single_message_spacing = 5.0;
             settings.bubble_padding = 6.0;
             settings.show_left_line = true;
             settings.left_spacing = 4.0;
@@ -546,7 +563,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.show_self_pic = true;
             settings.metadata_content_spacing = 6.0;
             settings.align_to_picture = false;
-            settings.item_spacing = 12.0;
+            settings.group_spacing = 12.0;
+            settings.single_message_spacing = 5.0;
             settings.bubble_padding = 6.0;
             settings.show_left_line = true;
             settings.left_spacing = 4.5;
@@ -622,7 +640,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
         widget::List::new( move || {
             timeline_item::TimelineItemWidget::new()
         })
-        .with_spacing(ITEM_SPACING_KEY)
+        .with_spacing(GROUP_SPACING_KEY)
         .padding(5.0)
     )
     .vertical()
@@ -1017,7 +1035,7 @@ fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
         .with_spacer(10.0)
         .with_child(
             widget::Flex::row()
-                .with_flex_child(widget::Label::new("List Spacing:").align_right()
+                .with_flex_child(widget::Label::new("Msg Spacing:").align_right()
                 , 0.7)
                 .with_default_spacer()
                 .with_flex_child(
@@ -1025,10 +1043,28 @@ fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
-                    .lens(LayoutSettings::item_spacing)
+                    .lens(LayoutSettings::single_message_spacing)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
-                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.item_spacing)}),
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.single_message_spacing)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Group Spacing:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(0.0, 28.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::group_spacing)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.group_spacing)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -1202,7 +1238,8 @@ fn main() -> Result<(), PlatformError> {
             show_self_pic: true,
             bubble_padding: 5.0,
             metadata_content_spacing: 1.0,
-            item_spacing: 6.0,
+            group_spacing: 6.0,
+            single_message_spacing: 5.0,
             show_left_line: false,
             left_spacing: 0.0,
             left_bubble_flipped: false,
