@@ -2,6 +2,7 @@ use druid::{AppLauncher, WindowDesc, Widget, PlatformError, WidgetExt, ImageBuf,
 use druid::widget;
 use druid::im;
 use druid;
+use rand::rngs::ThreadRng;
 use std::sync;
 use tracing::{error};
 use rand::Rng;
@@ -157,6 +158,7 @@ struct MessageGroup {
 #[derive(Clone, druid::Data)]
 struct Message {
     message: String,
+    position_in_group: u32,
     timestamp_epoch_seconds: i64,
 }
 
@@ -235,6 +237,7 @@ fn on_send_icon_click(_ctx: &mut EventCtx, state: &mut AppState, env: &druid::En
             messages: im::vector![
                 Message {
                     message: state.text_edit.to_string(),
+                    position_in_group: 0,
                     timestamp_epoch_seconds: chrono::offset::Local::now().timestamp()
                 }
             ],
@@ -1220,6 +1223,96 @@ fn get_self_user_from_args() -> u64 {
     }
 }
 
+const NOUNS: &'static [&str] = &[
+    "time", "person", "year", "way", "day", "thing", "man", "world", "life",
+    "hand", "part", "child", "eye", "woman", "place", "work", "week", "case",
+    "point",  "government", "company", "number", "group", "problem", "fact"
+];
+const VERBS: &'static [&str] = &[
+    "be", "have", "do", "say", "get", "make", "go", "know", "take", "see",
+    "come", "think", "look", "want", "give", "use", "find", "tell", "ask",
+    "work", "seem", "feel", "try", "leave", "call"
+];
+const ADJECTIVES: &'static [&str] = &[
+    "good", "new", "first", "long", "great", "little", "own", "other", "old",
+    "right", "big", "high", "different", "small", "large", "next", "early",
+    "important", "few", "public", "bad", "same", "able",
+];
+const PREPOSITIONS: &'static [&str] = &[
+    "to", "of", "in", "for", "on", "with", "at", "by", "from", "up", "about",
+    "info", "over", "after",
+];
+const OTHERS: &'static [&str] = &[
+    "the", "and", "a", "that", "I", "it", "not", "he", "as", "you", "this",
+    "but", "his", "they", "her", "she", "or", "an", "will", "my", "one",
+    "all", "would", "there", "their",
+];
+const ALL_WORD_LISTS: &'static [&'static [&str]] = &[
+    NOUNS, VERBS, ADJECTIVES, PREPOSITIONS, OTHERS,
+];
+const SINGLE_WORDS: &'static [&str] = &[
+    "Nice", "Thanks", "Okay", "ok", "Hey", "lol",
+];
+
+fn uppercase_first_letter(s: String) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
+fn generate_random_message(rng: &mut ThreadRng, capital_probability: f64) -> String {
+    let mut msg_len = rng.gen_range(1..13);
+    if rng.gen_bool(0.1) {
+        msg_len *= 2;
+    } else if rng.gen_bool(0.1) {
+        msg_len *= 4;
+    }
+
+    let mut message = String::new();
+
+    if msg_len <= 3 {
+        if rng.gen_bool(0.5) {
+            if rng.gen_bool(0.5) {
+                message.push_str("Hi ");
+            } else {
+                message.push_str("Hello ");
+            }
+            if msg_len == 3 {
+                message.push_str(ADJECTIVES[rng.gen_range(0..ADJECTIVES.len())]);
+                message.push(' ');
+            }
+            if msg_len > 1 {
+                message.push_str(NOUNS[rng.gen_range(0..NOUNS.len())]);
+                message.push(' ');
+            }
+            return message;
+        } else if msg_len == 1 {
+            message.push_str(SINGLE_WORDS[rng.gen_range(0..SINGLE_WORDS.len())]);
+            return message;
+        }
+    }
+
+    for _i in 0..msg_len {
+        let word_list = ALL_WORD_LISTS[rng.gen_range(0..ALL_WORD_LISTS.len())];
+        message += word_list[rng.gen_range(0..word_list.len())];
+        message.push(' ');
+    }
+
+    if rng.gen_bool(0.4) {
+        let str = message[0..message.len() - 1].to_string();
+        message = str;
+        message.push('.');
+    }
+
+    if rng.gen_bool(capital_probability) {
+        uppercase_first_letter(message)
+    } else {
+        message
+    }
+}
+
 fn main() -> Result<(), PlatformError> {
     // create the initial app state
     let mut initial_state = AppState {
@@ -1255,8 +1348,6 @@ fn main() -> Result<(), PlatformError> {
     };
 
     let mut rng = rand::thread_rng();
-    let mut msg_body = String::new();
-    msg_body.push_str("Start of msg.");
 
     // Find required image resolution to not cause blurry profile pics
 
@@ -1279,31 +1370,22 @@ fn main() -> Result<(), PlatformError> {
     let mut offset_amount = 60;
 
     for _ in 1..20 {
-        msg_body.push_str(" Appended!");
         let user_id = rng.gen_range(0..5);
-        let msg = MessageGroup {
-            messages: im::vector![
-                Message {
-                    message: msg_body.clone(),
-                    timestamp_epoch_seconds: time,
-                },
-                Message {
-                    message: "Second message".to_string(),
-                    timestamp_epoch_seconds: time + 5
-                },
-                Message {
-                    message: "Third message".to_string(),
-                    timestamp_epoch_seconds: time + 6
-                },
-                Message {
-                    message: "Fourth message".to_string(),
-                    timestamp_epoch_seconds: time + 7
-                },
-            ],
+        let group_size = rng.gen_range(1..5);
+        let mut messages = im::vector![];
+        for i in 0..group_size {
+            messages.push_back(Message {
+                message: generate_random_message(&mut rng, if i == 0 {0.95} else {0.7} ),
+                position_in_group: i,
+                timestamp_epoch_seconds: time + i as i64,
+            })
+        }
+        let msg_group = MessageGroup {
+            messages: messages,
             user_id: user_id,
             profile_pic: initial_state.profile_pics[user_id as usize].clone(),
         };
-        initial_state.timeline_data.push_front(msg);
+        initial_state.timeline_data.push_front(msg_group);
         time -= offset_amount;
         offset_amount *= 2;
     }
@@ -1312,6 +1394,7 @@ fn main() -> Result<(), PlatformError> {
         messages: im::vector![
             Message {
                 timestamp_epoch_seconds: time,
+                position_in_group: 0,
                 message: "This\nis\na\nnarrow\nbut\nlong\nmessage.\nHopefully\nthe\nbubble\nstays\nnarrow.".to_string(),
             },
         ],
@@ -1324,6 +1407,7 @@ fn main() -> Result<(), PlatformError> {
         messages: im::vector![
                 Message {
                     timestamp_epoch_seconds: time,
+                    position_in_group: 0,
                     message: "Hi".to_string(),
                 },
         ],
