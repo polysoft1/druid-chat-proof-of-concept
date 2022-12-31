@@ -306,6 +306,31 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
+        PredefiendLayout::LargeBubble => {
+            settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 40.0;
+            settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_radius = 8.0;
+            settings.chat_bubble_picture_spacing = 6.5;
+            settings.show_self_pic = true;
+            settings.metadata_content_spacing = 2.0;
+            settings.align_to_picture = true;
+            settings.bubble_padding = 7.0;
+            settings.group_spacing = 10.0;
+            settings.single_message_spacing = 5.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
+            settings.metadata_font_bolded = false;
+            settings.content_font_size = 14.0;
+            settings.sender_font_size = 12.0;
+            settings.datetime_font_size = 12.0;
+            settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+        },
         PredefiendLayout::OldHangouts => {
             settings.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
             settings.picture_shape = PictureShape::Rectangle;
@@ -558,6 +583,27 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
+        PredefiendLayout::LargeIRC => {
+            settings.item_layout = ItemLayoutOption::IRCStyle;
+            settings.picture_shape = PictureShape::Rectangle;
+            settings.picture_size = 18.0;
+            settings.chat_bubble_picture_spacing = 4.0;
+            settings.show_self_pic = true;
+            settings.metadata_content_spacing = 3.0;
+            settings.align_to_picture = false;
+            settings.group_spacing = 7.0;
+            settings.single_message_spacing = 6.0;
+            settings.bubble_padding = 6.0;
+            settings.show_left_line = true;
+            settings.left_spacing = 5.0;
+            settings.metadata_font_bolded = false;
+            settings.content_font_size = 14.0;
+            settings.sender_font_size = 14.0;
+            settings.datetime_font_size = 12.0;
+            settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+        },
         PredefiendLayout::SpacedIRC => {
             settings.item_layout = ItemLayoutOption::IRCStyle;
             settings.picture_shape = PictureShape::Rectangle;
@@ -674,6 +720,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
 pub enum PredefiendLayout {
     ModernHangouts,
     ModernBubble,
+    LargeBubble,
     OldHangouts,
     Telegram,
     IMessage,
@@ -685,6 +732,7 @@ pub enum PredefiendLayout {
     CompactDiscord,
     Compact,
     IRC,
+    LargeIRC,
     SpacedIRC,
 }
 
@@ -748,6 +796,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                                 })
                         )
                         .with_child(
+                            widget::Button::new("Large Bubble")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::LargeBubble, data);
+                                })
+                        )
+                        .with_child(
                             widget::Button::new("Old Fashioned Hangouts")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::OldHangouts, data);
@@ -783,6 +837,10 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                                     predefined_layout_selected(ctx, PredefiendLayout::OtherBubble, data);
                                 })
                         )
+                        .cross_axis_alignment(widget::CrossAxisAlignment::Fill)
+                    , 1.3)
+                .with_flex_child(
+                    widget::Flex::column()
                         .with_child(
                             widget::Button::new("Discord")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
@@ -811,6 +869,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("Modern IRC")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::IRC, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Large IRC")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::LargeIRC, data);
                                 })
                         )
                         .with_child(
