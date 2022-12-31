@@ -17,6 +17,7 @@ pub const ITEM_LAYOUT_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft
 pub const PICTURE_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.picture_shape");
 pub const PICTURE_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.picture_size");
 pub const CHAT_BUBBLE_TAIL_SHAPE_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.tail_shape");
+pub const CHAT_BUBBLE_TAIL_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.tail_size");
 pub const CHAT_BUBBLE_RADIUS_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_radius");
 pub const CHAT_BUBBLE_IMG_SPACING_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.bubble_img_spacing");
 pub const SELF_USER_ID_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.self_user");
@@ -56,6 +57,7 @@ struct LayoutSettings {
     picture_shape: PictureShape,
     picture_size: f64,
     chat_bubble_tail_shape: TailShape,
+    chat_bubble_tail_size: f64,
     chat_bubble_radius: f64,
     chat_bubble_picture_spacing: f64,
     show_self_pic: bool,
@@ -86,6 +88,7 @@ impl LayoutSettings {
             picture_shape: num_traits::FromPrimitive::from_u64(env.get(crate::PICTURE_SHAPE_KEY)).expect("Invalid layout index"),
             picture_size: env.get(crate::PICTURE_SIZE_KEY),
             chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid layout index"),
+            chat_bubble_tail_size: env.get(CHAT_BUBBLE_TAIL_SIZE_KEY),
             chat_bubble_radius: env.get(CHAT_BUBBLE_RADIUS_KEY),
             chat_bubble_picture_spacing: env.get(CHAT_BUBBLE_IMG_SPACING_KEY),
             show_self_pic: env.get(SHOW_SELF_PROFILE_PIC_KEY),
@@ -113,6 +116,7 @@ impl LayoutSettings {
         env.set(PICTURE_SHAPE_KEY, self.picture_shape as u64);
         env.set(PICTURE_SIZE_KEY, self.picture_size as f64);
         env.set(CHAT_BUBBLE_TAIL_SHAPE_KEY, self.chat_bubble_tail_shape as u64);
+        env.set(CHAT_BUBBLE_TAIL_SIZE_KEY, self.chat_bubble_tail_size as f64);
         env.set(CHAT_BUBBLE_RADIUS_KEY, self.chat_bubble_radius as f64);
         env.set(CHAT_BUBBLE_IMG_SPACING_KEY, self.chat_bubble_picture_spacing as f64);
         env.set(SHOW_SELF_PROFILE_PIC_KEY, self.show_self_pic);
@@ -217,7 +221,7 @@ fn on_settings_icon_click(ctx: &mut EventCtx, state: &mut AppState, _env: &druid
         println!("Settings already open. Ignoring.");
     } else {
         state.settings_open = true; // Prevent it from being opened a second time
-        let settings_size = druid::Size::new(1400.0, 500.0);
+        let settings_size = druid::Size::new(1400.0, 530.0);
         let mut new_win = WindowDesc::new(build_settings_ui()).resizable(false);
         new_win = new_win.window_size(settings_size);
         ctx.new_window(new_win);
@@ -261,6 +265,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 32.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_tail_size = 6.0;
             settings.chat_bubble_radius = 4.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
@@ -286,6 +291,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 32.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 10.0;
             settings.chat_bubble_picture_spacing = 6.5;
             settings.show_self_pic = false;
@@ -311,6 +317,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 40.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 8.0;
             settings.chat_bubble_picture_spacing = 6.5;
             settings.show_self_pic = true;
@@ -336,6 +343,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Rectangle;
             settings.picture_size = 35.0;
             settings.chat_bubble_tail_shape = TailShape::Straight;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 0.5;
             settings.chat_bubble_picture_spacing = 0.5;
             settings.show_self_pic = true;
@@ -361,6 +369,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 32.0;
             settings.chat_bubble_tail_shape = TailShape::Fancy;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 10.0;
             settings.chat_bubble_picture_spacing = 6.5;
             settings.show_self_pic = false;
@@ -386,6 +395,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 32.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 4.0;
             settings.chat_bubble_picture_spacing = 8.0;
             settings.show_self_pic = false;
@@ -406,11 +416,38 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
+        PredefiendLayout::OldKik => {
+            settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+            settings.picture_shape = PictureShape::Circle;
+            settings.picture_size = 30.0;
+            settings.chat_bubble_tail_shape = TailShape::Symmetric;
+            settings.chat_bubble_tail_size = 5.5;
+            settings.chat_bubble_radius = 4.0;
+            settings.chat_bubble_picture_spacing = 7.0;
+            settings.show_self_pic = false;
+            settings.metadata_content_spacing = 1.0;
+            settings.align_to_picture = true;
+            settings.bubble_padding = 5.0;
+            settings.group_spacing = 6.0;
+            settings.single_message_spacing = 5.0;
+            settings.show_left_line = false;
+            settings.left_spacing = 0.0;
+            settings.left_bubble_flipped = false;
+            settings.right_bubble_flipped = true;
+            settings.metadata_font_bolded = false;
+            settings.content_font_size = 13.0;
+            settings.sender_font_size = 11.0;
+            settings.datetime_font_size = 11.0;
+            settings.compact_datetime = true;
+            settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
+            settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+        },
         PredefiendLayout::TearDrop => {
             settings.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 25.0;
             settings.chat_bubble_tail_shape = TailShape::Square;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 12.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
@@ -436,6 +473,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 25.0;
             settings.chat_bubble_tail_shape = TailShape::Hidden;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 8.0;
             settings.chat_bubble_picture_spacing = 3.5;
             settings.show_self_pic = false;
@@ -461,6 +499,7 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.picture_shape = PictureShape::Circle;
             settings.picture_size = 28.0;
             settings.chat_bubble_tail_shape = TailShape::ConcaveBottom;
+            settings.chat_bubble_tail_size = 7.0;
             settings.chat_bubble_radius = 3.0;
             settings.chat_bubble_picture_spacing = 6.0;
             settings.show_self_pic = false;
@@ -724,6 +763,7 @@ pub enum PredefiendLayout {
     OldHangouts,
     Telegram,
     IMessage,
+    OldKik,
     TearDrop,
     Tailless,
     OtherBubble,
@@ -745,12 +785,13 @@ const IMG_SHAPE_OPTIONS: [(&str, PictureShape); 5] =
     ("Hexagon", PictureShape::Hexagon),
     ("Octagon", PictureShape::Octagon),
 ];
-const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 5] =
+const TAIL_SHAPE_OPTIONS: [(&str, TailShape); 6] =
 [
     ("Concave Bottom", TailShape::ConcaveBottom),
     ("Straight", TailShape::Straight),
     ("Fancy", TailShape::Fancy),
     ("Square", TailShape::Square),
+    ("Symmetric", TailShape::Symmetric),
     ("Hidden", TailShape::Hidden),
 ];
 const LAYOUT_OPTIONS: [(&str, ItemLayoutOption); 5] =
@@ -817,6 +858,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             widget::Button::new("iMessage")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefiendLayout::IMessage, data);
+                                })
+                        )
+                        .with_child(
+                            widget::Button::new("Old Kik")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefiendLayout::OldKik, data);
                                 })
                         )
                         .with_child(
@@ -990,6 +1037,24 @@ fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
                 , 0.9)
                 .with_flex_child(widget::Label::new(
                     |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_radius)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Tail Size:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(2.0, 12.0).with_step(0.5)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::chat_bubble_tail_size)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_tail_size)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -1389,6 +1454,7 @@ fn main() -> Result<(), PlatformError> {
             picture_shape: PictureShape::Circle,
             picture_size: 32.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
+            chat_bubble_tail_size: 7.0,
             chat_bubble_radius: 4.0,
             chat_bubble_picture_spacing: 3.5,
             align_to_picture: true,

@@ -20,7 +20,6 @@ pub struct TimelineItemWidget {
 
 const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
 const SELF_MSG_COLOR: Color = Color::rgb8(12, 131, 242);
-const ARROW_SIZE: f64 = 7.0;
 const IRC_STACK_WIDTH: f64 = 400.0; // How wide should be required for it to no longer be stacked.
 const IRC_HEADER_WIDTH: f64 = 160.0; // How far should we push the text right to make it so they don't end up staggered.
 
@@ -39,6 +38,7 @@ pub enum TailShape {
     ConcaveBottom,
     Fancy,
     Square,
+    Symmetric,
     Hidden,
 }
 
@@ -51,44 +51,53 @@ pub enum ItemLayoutOption {
     IRCStyle,
 }
 
-fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool, flip_y: bool) -> kurbo::BezPath {
+fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool, flip_y: bool, tail_size: f64) -> kurbo::BezPath {
     let x_translation = if flip_x { -1.0 } else { 1.0 };
     let y_translation = if flip_y { -1.0 } else { 1.0 };
     let mut path = kurbo::BezPath::new();
     // Comments are based on unflipped tail. Unflipped means it's pointing to a pic in the top left.
 
-    if shape == TailShape::Fancy {
+    if shape == TailShape::Symmetric
+    {
+        // Note: It's centered and symmetric, so no need to use y_translation
+        path.move_to(Point::new(center_x, y_position - tail_size));
+        path.line_to(Point::new(center_x - tail_size * x_translation, y_position));
+        path.line_to(Point::new(center_x, y_position + tail_size));
+        // Now move over to prevent a gap
+        path.line_to(Point::new(center_x + 3.0 * x_translation, y_position + tail_size));
+        path.line_to(Point::new(center_x + 3.0 * x_translation, y_position - tail_size));
+    } else if shape == TailShape::Fancy {
         // Bottom right
-        path.move_to(Point::new(center_x + ARROW_SIZE * x_translation, y_position + ARROW_SIZE * y_translation));
+        path.move_to(Point::new(center_x + tail_size * x_translation, y_position + tail_size * y_translation));
         // Move towards picture
         path.quad_to(
             Point::new(center_x, y_position - 2.0 * y_translation),
-            Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation)
+            Point::new(center_x - tail_size * x_translation, y_position + -0.2 * y_translation)
         );
         path.quad_to(
-            Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
-            Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
+            Point::new(center_x - tail_size/4.0 * x_translation, y_position + tail_size/4.0 * y_translation),
+            Point::new(center_x, y_position + tail_size * 1.3 * y_translation),
         );
     } else if shape == TailShape::Square {
         // Just make a triangle to remove the radius from this corner
         path.move_to(Point::new(center_x, y_position + -0.1 * y_translation));
-        path.line_to(Point::new(center_x, y_position + ARROW_SIZE * 2.0 * y_translation));
-        path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position));
+        path.line_to(Point::new(center_x, y_position + tail_size * 2.0 * y_translation));
+        path.line_to(Point::new(center_x + tail_size * 2.0 * x_translation, y_position));
     } else {
         // Start top middle. Aligned with top left of bubble if it had no radius
         path.move_to(Point::new(center_x, y_position + -0.1 * y_translation));
         // Flat across the top, towards the picture
-        path.line_to(Point::new(center_x - ARROW_SIZE * x_translation, y_position + -0.2 * y_translation));
+        path.line_to(Point::new(center_x - tail_size * x_translation, y_position + -0.2 * y_translation));
         // Now to low point. + is down
         match shape {
             TailShape::ConcaveBottom => {
                 path.quad_to(
-                    Point::new(center_x - ARROW_SIZE/4.0 * x_translation, y_position + ARROW_SIZE/4.0 * y_translation),
-                    Point::new(center_x, y_position + ARROW_SIZE * 1.3 * y_translation),
+                    Point::new(center_x - tail_size/4.0 * x_translation, y_position + tail_size/4.0 * y_translation),
+                    Point::new(center_x, y_position + tail_size * 1.3 * y_translation),
                 );
             }
             TailShape::Straight => {
-                path.line_to(Point::new(center_x, y_position + ARROW_SIZE * y_translation));
+                path.line_to(Point::new(center_x, y_position + tail_size * y_translation));
             },
             _ => {
                 return BezPath::default();
@@ -96,7 +105,7 @@ fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool
         }
 
         // To right to cover the curve of the bubble. Double size to ensure coverage of bubble.
-        path.line_to(Point::new(center_x + ARROW_SIZE * 2.0 * x_translation, y_position + 0.2));
+        path.line_to(Point::new(center_x + tail_size * 2.0 * x_translation, y_position + 0.2));
     }
     path.close_path();
     path
@@ -484,9 +493,27 @@ impl LayoutSettings {
         !is_self_user || self.show_self_pic || !self.is_bubble()
     }
 
+    /// Used to position the profile pic
     fn profile_pic_x_offset(&self, is_self_user: bool, width_available: f64) -> f64 {
         if is_self_user && self.is_bubble() {
             width_available - self.picture_size
+        } else {
+            0.0
+        }
+    }
+
+    /// Used to account for cases when the tail will not
+    /// just be pinned to the top or bottom
+    fn get_tail_y_offset(&self, is_self_user: bool) -> f64 {
+        if self.chat_bubble_tail_shape == TailShape::Symmetric {
+            // It's symmetric and centered at the profile picture
+            let mut offset = self.picture_size / 2.0;
+            // If the bubble is flipped, the reference point changes to the
+            // bottom, so it needs to be negative.
+            if self.is_bubble_flipped(is_self_user) {
+                offset *= -1.0;
+            }
+            offset
         } else {
             0.0
         }
@@ -696,10 +723,11 @@ impl TimelineItemWidget {
             if settings.chat_bubble_tail_shape != TailShape::Hidden {
                 ctx.fill(make_tail_path(
                     tail_x_position,
-                    tail_y_position,
+                    tail_y_position + settings.get_tail_y_offset(is_self_user),
                     settings.chat_bubble_tail_shape,
                     is_self_user,
-                    is_flipped
+                    is_flipped,
+                    settings.chat_bubble_tail_size,
                 ), &bubble_color);
             }
         }
