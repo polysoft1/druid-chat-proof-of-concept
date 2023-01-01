@@ -42,7 +42,9 @@ pub const DATETIME_FORMAT_KEY: druid::env::Key<u64> = druid::env::Key::new("poly
 pub const SIDE_TIME_FORMAT_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.side_time_format");
 pub const SENDER_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.sender_color");
 pub const DATETIME_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.datetime_color");
-pub const LEFT_META_OFFSET: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_meta_offset");
+pub const LEFT_META_OFFSET_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.left_meta_offset");
+pub const IRC_STACK_WIDTH_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.irc_stack_width");
+pub const IRC_HEADER_WIDTH_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.irc_header_width");
 // Commands to communicate things that need to happen
 const REFRESH_UI_SELECTOR: druid::Selector = druid::Selector::new("olysoft.druid-demo.refresh_ui");
 

@@ -3,9 +3,6 @@ use druid::{BoxConstraints, Size, Point};
 use super::helper_functions::{self, TimestampFormat};
 use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, MetadataLayout,};
 
-const IRC_STACK_WIDTH: f64 = 400.0; // How wide should be required for it to no longer be stacked.
-const IRC_HEADER_WIDTH: f64 = 160.0; // How far should we push the text right to make it so they don't end up staggered.
-
 #[derive(Clone, druid::Data, druid::Lens)]
 pub struct SimpleColor {
     r: u8,
@@ -21,33 +18,59 @@ impl SimpleColor {
 
 #[derive(Clone, druid::Data, druid::Lens)]
 pub struct LayoutSettings {
+    /// General layout
     pub item_layout: ItemLayoutOption,
+    /// Layout of time and date
     pub metadata_layout: MetadataLayout,
     pub picture_shape: PictureShape,
+    /// The height and width of the image
     pub picture_size: f64,
+    /// The tail shape, if a bubble
     pub chat_bubble_tail_shape: TailShape,
+    /// how far the tail should go in the furthest direction
     pub chat_bubble_tail_size: f64,
+    /// The radius curve of the bubble background
     pub chat_bubble_radius: f64,
-    pub chat_bubble_picture_spacing: f64,
+    /// The spacing between the content or bubble, and the picture
+    pub chat_picture_spacing: f64,
+    /// Whether to hide right aligned pictures
     pub show_self_pic: bool,
+    /// The space around the content where the bubble background wraps around
     pub bubble_padding: f64,
+    /// The spacing between the content and the metadata. Vertical except for IRC
     pub metadata_content_spacing: f64,
+    /// When not bubble layout, whether to align the content to the picture, or all the way to the left
     pub align_to_picture: bool,
+    /// Spacing between message groups
     pub group_spacing: f64,
+    /// Spacing between individual messages
     pub single_message_spacing: f64,
+    /// Whether to show a left line beside every message
     pub show_left_line: bool,
+    /// Spacing to left of every individual message. If a line is shown, it is to the left of this.
     pub left_spacing: f64,
+    /// Whether to bottom position the image and the bubble tail for other users
     pub left_bubble_flipped: bool,
+    /// Whether to bottom position the image and the bubble tail for self user
     pub right_bubble_flipped: bool,
+    /// The font size of the content
     pub content_font_size: f64,
+    /// The font size of the sender
     pub sender_font_size: f64,
+    /// The font size of the datetime
     pub datetime_font_size: f64,
+    /// Whether to bold the metadata
     pub metadata_font_bolded: bool,
     pub datetime_format: TimestampFormat,
     pub side_time_format: TimestampFormat,
     pub sender_color: SimpleColor,
     pub datetime_color: SimpleColor,
+    /// How far to move the left meta (time) to left of message
     pub left_meta_offset: f64,
+    /// How wide should be required for it to no longer be stacked.
+    pub irc_stack_width: f64,
+    /// How far should we push the text right to make it so they don't end up staggered.
+    pub irc_header_width: f64,
 }
 
 
@@ -82,7 +105,7 @@ impl LayoutSettings {
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
             chat_bubble_tail_size: 6.0,
             chat_bubble_radius: 4.0,
-            chat_bubble_picture_spacing: 3.5,
+            chat_picture_spacing: 3.5,
             show_self_pic: false,
             metadata_content_spacing: 1.0,
             align_to_picture: true,
@@ -100,6 +123,8 @@ impl LayoutSettings {
             datetime_format: TimestampFormat::Compact12,
             side_time_format: TimestampFormat::TimeOnly12,
             left_meta_offset: 2.0,
+            irc_stack_width: 400.0,
+            irc_header_width: 160.0,
             sender_color: SimpleColor { r: 175, g: 175, b: 175 },
             datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
         }
@@ -116,7 +141,7 @@ impl LayoutSettings {
             chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid bubble tail shape index"),
             chat_bubble_tail_size: env.get(crate::CHAT_BUBBLE_TAIL_SIZE_KEY),
             chat_bubble_radius: env.get(crate::CHAT_BUBBLE_RADIUS_KEY),
-            chat_bubble_picture_spacing: env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY),
+            chat_picture_spacing: env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY),
             show_self_pic: env.get(crate::SHOW_SELF_PROFILE_PIC_KEY),
             bubble_padding: env.get(crate::BUBBLE_PADDING_KEY),
             metadata_content_spacing: env.get(crate::METADATA_CONTENT_SPACING_KEY),
@@ -133,7 +158,9 @@ impl LayoutSettings {
             metadata_font_bolded: env.get(crate::HEADER_FONT_BOLDED_KEY),
             datetime_format: num_traits::FromPrimitive::from_u64(env.get(crate::DATETIME_FORMAT_KEY)).expect("Invalid datetime format index"),
             side_time_format: num_traits::FromPrimitive::from_u64(env.get(crate::SIDE_TIME_FORMAT_KEY)).expect("Invalid side time format index"),
-            left_meta_offset: env.get(crate::LEFT_META_OFFSET),
+            left_meta_offset: env.get(crate::LEFT_META_OFFSET_KEY),
+            irc_stack_width: env.get(crate::IRC_STACK_WIDTH_KEY),
+            irc_header_width: env.get(crate::IRC_HEADER_WIDTH_KEY),
             sender_color: SimpleColor { r: sender_color.0, g: sender_color.1, b: sender_color.2 },
             datetime_color: SimpleColor { r: datetime_color.0, g: datetime_color.1, b: datetime_color.2 },
         }
@@ -147,7 +174,7 @@ impl LayoutSettings {
         env.set(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY, self.chat_bubble_tail_shape as u64);
         env.set(crate::CHAT_BUBBLE_TAIL_SIZE_KEY, self.chat_bubble_tail_size as f64);
         env.set(crate::CHAT_BUBBLE_RADIUS_KEY, self.chat_bubble_radius as f64);
-        env.set(crate::CHAT_BUBBLE_IMG_SPACING_KEY, self.chat_bubble_picture_spacing as f64);
+        env.set(crate::CHAT_BUBBLE_IMG_SPACING_KEY, self.chat_picture_spacing as f64);
         env.set(crate::SHOW_SELF_PROFILE_PIC_KEY, self.show_self_pic);
         env.set(crate::BUBBLE_PADDING_KEY, self.bubble_padding as f64);
         env.set(crate::METADATA_CONTENT_SPACING_KEY, self.metadata_content_spacing as f64);
@@ -164,7 +191,9 @@ impl LayoutSettings {
         env.set(crate::HEADER_FONT_BOLDED_KEY, self.metadata_font_bolded as bool);
         env.set(crate::DATETIME_FORMAT_KEY, self.datetime_format as u64);
         env.set(crate::SIDE_TIME_FORMAT_KEY, self.side_time_format as u64);
-        env.set(crate::LEFT_META_OFFSET, self.left_meta_offset);
+        env.set(crate::LEFT_META_OFFSET_KEY, self.left_meta_offset);
+        env.set(crate::IRC_STACK_WIDTH_KEY, self.irc_stack_width);
+        env.set(crate::IRC_HEADER_WIDTH_KEY, self.irc_header_width);
         env.set(crate::SENDER_COLOR_KEY, self.sender_color.to_druid_color());
         env.set(crate::DATETIME_COLOR_KEY, self.datetime_color.to_druid_color());
     }
@@ -238,12 +267,12 @@ impl LayoutSettings {
 
     /// Gets the width of the profile pic and the space between it and the message or bubble.
     pub fn get_profile_pic_area_width(&self, is_self_user: bool) -> f64 {
-        self.actual_profile_pic_width(is_self_user) + self.chat_bubble_picture_spacing
+        self.actual_profile_pic_width(is_self_user) + self.chat_picture_spacing
     }
 
     /// Returns true when the content will not be vertically stacked, but instead horizontally aligned.
     pub fn is_side_by_side(&self, width_available: f64) -> bool {
-        self.item_layout == ItemLayoutOption::IRCStyle && width_available > IRC_STACK_WIDTH
+        self.item_layout == ItemLayoutOption::IRCStyle && width_available > self.irc_stack_width
     }
 
     /// The area that the content can take up.
@@ -255,7 +284,7 @@ impl LayoutSettings {
     pub fn get_available_content_width(&self, width_available: f64, is_self_user: bool) -> f64 {
         let mut width: f64 = width_available;
         width -= if self.is_side_by_side(width_available) {
-            IRC_HEADER_WIDTH
+            self.irc_header_width
         } else {
             self.get_profile_pic_area_width(is_self_user)
         };
@@ -283,7 +312,7 @@ impl LayoutSettings {
     /// the width is either the total width minus the left spacing, or the IRC width minus the picture size
     pub fn get_sender_label_area(&self, width_available: f64) -> BoxConstraints {
         let width = if self.is_side_by_side(width_available) {
-            IRC_HEADER_WIDTH - self.picture_size
+            self.irc_header_width - self.picture_size
         } else {
             width_available
         };
@@ -345,7 +374,7 @@ impl LayoutSettings {
                 // else stack them
                 if self.is_side_by_side(width_available) {
                     // The msg content is to the right of the metadata
-                    Point::new(IRC_HEADER_WIDTH, y_top_offset)
+                    Point::new(self.irc_header_width, y_top_offset)
                 } else {
                     // Stacked, with picture above instead of to side, since this is the most compact layout
                     Point::new(0.0, metadata_height + self.metadata_content_spacing + y_top_offset)
@@ -401,7 +430,7 @@ impl LayoutSettings {
                 // Non-bubble
                 if self.metadata_layout == MetadataLayout::LeftRightSpaced && self.is_side_by_side(width_available) {
                     // Align to right of IRC content area
-                    Point::new(IRC_HEADER_WIDTH - sender_width - self.metadata_content_spacing, 0.0)
+                    Point::new(self.irc_header_width - sender_width - self.metadata_content_spacing, 0.0)
                 } else {
                     // All the way to the left
                     Point::new(msg_x_start, 0.0)
@@ -459,7 +488,7 @@ impl LayoutSettings {
         if is_self_user && self.is_bubble() {
             width_available - self.picture_size
         } else if self.metadata_layout == MetadataLayout::LeftRightSpaced && self.is_side_by_side(width_available) {
-            return IRC_HEADER_WIDTH - sender_label_size.width - self.chat_bubble_picture_spacing - self.picture_size - self.metadata_content_spacing
+            return self.irc_header_width - sender_label_size.width - self.chat_picture_spacing - self.picture_size - self.metadata_content_spacing
         } else {
             0.0
         }
@@ -492,7 +521,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 6.0;
                 self.chat_bubble_radius = 4.0;
-                self.chat_bubble_picture_spacing = 3.5;
+                self.chat_picture_spacing = 3.5;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 1.0;
                 self.align_to_picture = true;
@@ -521,7 +550,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 10.0;
-                self.chat_bubble_picture_spacing = 6.5;
+                self.chat_picture_spacing = 6.5;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -550,7 +579,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 8.0;
-                self.chat_bubble_picture_spacing = 6.5;
+                self.chat_picture_spacing = 6.5;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -579,7 +608,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::Straight;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 0.5;
-                self.chat_bubble_picture_spacing = 0.5;
+                self.chat_picture_spacing = 0.5;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 3.0;
                 self.align_to_picture = true;
@@ -608,7 +637,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::Fancy;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 10.0;
-                self.chat_bubble_picture_spacing = 6.5;
+                self.chat_picture_spacing = 6.5;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -637,7 +666,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 4.0;
-                self.chat_bubble_picture_spacing = 8.0;
+                self.chat_picture_spacing = 8.0;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 5.0;
                 self.align_to_picture = true;
@@ -666,7 +695,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::Symmetric;
                 self.chat_bubble_tail_size = 5.0;
                 self.chat_bubble_radius = 4.0;
-                self.chat_bubble_picture_spacing = 10.0;
+                self.chat_picture_spacing = 10.0;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 1.0;
                 self.align_to_picture = true;
@@ -695,7 +724,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::Square;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 12.0;
-                self.chat_bubble_picture_spacing = 3.5;
+                self.chat_picture_spacing = 3.5;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -724,7 +753,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::Hidden;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 8.0;
-                self.chat_bubble_picture_spacing = 3.5;
+                self.chat_picture_spacing = 3.5;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -753,7 +782,7 @@ impl LayoutSettings {
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 3.0;
-                self.chat_bubble_picture_spacing = 6.0;
+                self.chat_picture_spacing = 6.0;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 5.0;
                 self.align_to_picture = true;
@@ -779,7 +808,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 40.0;
-                self.chat_bubble_picture_spacing = 13.0;
+                self.chat_picture_spacing = 13.0;
                 self.metadata_content_spacing = 7.0;
                 self.align_to_picture = true;
                 self.bubble_padding = 0.0;
@@ -802,7 +831,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 36.0;
-                self.chat_bubble_picture_spacing = 8.0;
+                self.chat_picture_spacing = 8.0;
                 self.metadata_content_spacing = 7.0;
                 self.align_to_picture = true;
                 self.bubble_padding = 0.0;
@@ -825,7 +854,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::RoundedRectangle;
                 self.picture_size = 36.0;
-                self.chat_bubble_picture_spacing = 5.5;
+                self.chat_picture_spacing = 5.5;
                 self.metadata_content_spacing = 5.0;
                 self.align_to_picture = true;
                 self.bubble_padding = 0.0;
@@ -848,7 +877,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 25.0;
-                self.chat_bubble_picture_spacing = 2.5;
+                self.chat_picture_spacing = 2.5;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 2.0;
                 self.align_to_picture = true;
@@ -872,7 +901,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 16.0;
-                self.chat_bubble_picture_spacing = 3.5;
+                self.chat_picture_spacing = 3.5;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 3.0;
                 self.align_to_picture = false;
@@ -896,7 +925,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 18.0;
-                self.chat_bubble_picture_spacing = 4.0;
+                self.chat_picture_spacing = 4.0;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 3.0;
                 self.align_to_picture = false;
@@ -920,7 +949,7 @@ impl LayoutSettings {
                 self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 16.0;
-                self.chat_bubble_picture_spacing = 3.5;
+                self.chat_picture_spacing = 3.5;
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 6.0;
                 self.align_to_picture = false;

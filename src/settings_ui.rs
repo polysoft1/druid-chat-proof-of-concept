@@ -218,6 +218,24 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                             , 0.4)
                             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
                         )
+                        .with_spacer(10.0)
+                        .with_child(widget::Flex::row()
+                            .with_flex_child(widget::Label::new("Datetime Font Size:").align_right()
+                            , 0.7)
+                            .with_default_spacer()
+                            .with_flex_child(
+                                widget::Stepper::new()
+                                .on_click( |ctx: &mut EventCtx, _, _ | {
+                                    ui_changed_callback(ctx);
+                                })
+                                .lens(LayoutSettings::datetime_font_size)
+                            , 0.9)
+                            .with_flex_child(
+                                widget::Label::new(
+                                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.datetime_font_size)})
+                            , 0.4)
+                            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                        )
                     , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -448,6 +466,46 @@ fn build_advanced_bubble_settings() -> impl Widget<LayoutSettings> {
 
 }
 
+fn build_advanced_irc_settings() -> impl Widget<LayoutSettings> {
+    widget::Flex::column()
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Stack width:").align_right()
+                    , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(100.0, 1000.0).with_step(5.0)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::irc_stack_width)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.irc_stack_width)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(widget::Label::new("Header Width:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::Slider::new().with_range(20.0, 250.0).with_step(1.0)
+                    .on_click( |ctx: &mut EventCtx, _, _ | {
+                        ui_changed_callback(ctx);
+                    })
+                    .lens(LayoutSettings::irc_header_width)
+                , 0.9)
+                .with_flex_child(widget::Label::new(
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.irc_header_width)}),
+                    0.4)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .disabled_if(|data, _| data.item_layout != ItemLayoutOption::IRCStyle)
+}
+
 fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
     widget::Flex::column()
         .with_child(
@@ -460,10 +518,10 @@ fn build_advanced_sizing_settings() -> impl Widget<LayoutSettings> {
                     .on_click( |ctx: &mut EventCtx, _, _ | {
                         ui_changed_callback(ctx);
                     })
-                    .lens(LayoutSettings::chat_bubble_picture_spacing)
+                    .lens(LayoutSettings::chat_picture_spacing)
                 , 0.9)
                 .with_flex_child(widget::Label::new(
-                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_bubble_picture_spacing)}),
+                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.chat_picture_spacing)}),
                     0.4)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -665,7 +723,17 @@ fn build_advanced_settings() -> impl Widget<LayoutSettings> {
         .with_child(
             widget::Flex::row()
                 .with_flex_child(build_advanced_layout_settings(), 1.5)
-                .with_flex_child(build_advanced_bubble_settings(), 1.0)
+                .with_flex_child(
+                    widget::Flex::column()
+                        .with_child(widget::Label::new("Bubble-specific"))
+                        .with_spacer(20.0)
+                        .with_child(build_advanced_bubble_settings())
+                        .with_spacer(30.0)
+                        .with_child(widget::Label::new("IRC-specific"))
+                        .with_spacer(20.0)
+                        .with_child(build_advanced_irc_settings())
+                        .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                , 1.0)
                 .with_flex_child(build_advanced_sizing_settings(), 1.0)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
