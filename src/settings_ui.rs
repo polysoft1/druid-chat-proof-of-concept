@@ -1,5 +1,5 @@
 use crate::helper::helper_functions::TimestampFormat;
-use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption};
+use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, MetadataLayout};
 use druid::{EventCtx, Widget, WidgetExt};
 use druid::widget;
 use crate::helper::layout_settings::{LayoutSettings, PredefinedLayout};
@@ -30,6 +30,12 @@ const LAYOUT_OPTIONS: [(&str, ItemLayoutOption); 5] =
     ("Bubble w/ top metadata", ItemLayoutOption::BubbleInternalTopMeta),
     ("Bubbleless", ItemLayoutOption::Bubbleless),
     ("IRC Style", ItemLayoutOption::IRCStyle),
+];
+const METADATA_LAYOUT_OPTIONS: [(&str, MetadataLayout); 3] =
+[
+    ("Side By Side", MetadataLayout::LeftSideBySide),
+    ("With Dot", MetadataLayout::LeftSideBySideWithDot),
+    ("Spaced", MetadataLayout::LeftRightSpaced),
 ];
 const DATETIME_OPTIONS: [(&str, TimestampFormat); 4] =
 [
@@ -198,7 +204,23 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
                 , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
-        .with_spacer(15.0)
+        .with_spacer(10.0)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(
+                    widget::Label::new("Metadata Layout:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::RadioGroup::column(METADATA_LAYOUT_OPTIONS)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
+                        .lens(LayoutSettings::metadata_layout)
+                , 1.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
         .with_child(
             widget::Flex::row()
                 .with_flex_child(

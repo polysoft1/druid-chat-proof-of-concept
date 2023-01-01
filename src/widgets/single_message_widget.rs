@@ -93,8 +93,7 @@ impl Widget<Message> for SingleMessageWidget {
         let settings = LayoutSettings::from_env(env);
         // Now position the content label
         let msg_content_bc = helper_functions::to_full_height_area(
-            bc.max().width - settings.left_spacing,
-            bc
+            bc.max().width - settings.left_spacing
         );
         let msg_content_origin = Point::new(settings.left_spacing, 0.0);
         let msg_size = self.msg_content_label.layout(layout_ctx, &msg_content_bc, data, env);

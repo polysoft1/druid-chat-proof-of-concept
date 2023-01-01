@@ -49,6 +49,13 @@ pub enum ItemLayoutOption {
     IRCStyle,
 }
 
+#[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
+pub enum MetadataLayout {
+    LeftSideBySide,
+    LeftSideBySideWithDot,
+    LeftRightSpaced,
+}
+
 fn make_tail_path(center_x: f64, y_position: f64, shape: TailShape, flip_x: bool, flip_y: bool, tail_size: f64) -> kurbo::BezPath {
     let x_translation = if flip_x { -1.0 } else { 1.0 };
     let y_translation = if flip_y { -1.0 } else { 1.0 };
@@ -238,20 +245,22 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.sender_name_label.widget_mut().set_text_color(crate::SENDER_COLOR_KEY);
         self.datetime_label.widget_mut().set_text_color(crate::DATETIME_COLOR_KEY);
 
+        let width_available = bc.max().width;
+
 
         // Do the label layouts first since we need to know their sizes
         let sender_label_size = self.sender_name_label.layout(
             layout_ctx,
-            &settings.get_sender_label_area(bc),
+            &settings.get_sender_label_area(width_available),
             data, env
         );
         let datetime_label_size = self.datetime_label.layout(
-            layout_ctx, &settings.get_sender_label_area(bc),
+            layout_ctx, &settings.get_sender_label_area(width_available),
             data, env
         );
 
         let msg_label_list_size = self.msg_content_labels.layout(
-            layout_ctx, &settings.get_available_content_area(bc, is_self_user),
+            layout_ctx, &settings.get_available_content_area(width_available, is_self_user),
             data, env);
         let total_metadata_width = sender_label_size.width + datetime_label_size.width;
 
@@ -262,7 +271,7 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.msg_content_labels.set_origin(layout_ctx, data, env,
             settings.get_content_origin(
                 is_self_user,
-                bc,
+                width_available,
                 y_top_offset,
                 msg_label_list_size.width,
                 total_metadata_width,
@@ -270,19 +279,26 @@ impl Widget<MessageGroup> for TimelineItemWidget {
             )
         );
 
-        let sender_label_origin = settings.get_sender_origin(is_self_user, bc, total_metadata_width, 
-            msg_label_list_size.height, msg_label_list_size.width, y_top_offset);
+        let sender_label_origin = settings.get_sender_origin(
+            is_self_user,
+            width_available,
+            sender_label_size.width,
+            datetime_label_size.width,
+            msg_label_list_size.height,
+            msg_label_list_size.width,
+            y_top_offset
+        );
 
         // Position to right of sender. Also account for differences in height.
-        let datetime_label_origin = Point::new(sender_label_origin.x + sender_label_size.width,
-            sender_label_origin.y + (sender_label_size.height - datetime_label_size.height) * 0.75);
+        let datetime_label_origin = settings.get_datetime_origin(width_available, msg_label_list_size.width,
+            &sender_label_origin, &sender_label_size, &datetime_label_size);
         
         self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
         self.datetime_label.set_origin(layout_ctx, data, env, datetime_label_origin);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
-        Size::new(bc.max().width, settings.get_total_height(bc, &sender_label_size, &msg_label_list_size, y_top_offset))
+        Size::new(bc.max().width, settings.get_total_height(width_available, &sender_label_size, &msg_label_list_size, y_top_offset))
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &MessageGroup, env: &Env) {
@@ -382,7 +398,11 @@ impl TimelineItemWidget {
         if !settings.show_picture(is_self_user) {
             return;
         }
-        let profile_pic_x_offset = settings.profile_pic_x_offset(is_self_user, ctx.region().bounding_box().width());
+        let profile_pic_x_offset = settings.profile_pic_x_origin(
+            is_self_user,
+            ctx.region().bounding_box().width(),
+            self.sender_name_label.layout_rect().size()
+        );
         let piet_image = {
             let image_data = data.profile_pic.clone();
             image_data.to_image(ctx.render_ctx)

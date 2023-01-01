@@ -1,7 +1,7 @@
 use druid;
 use druid::{BoxConstraints, Size, Point};
 use super::helper_functions::{self, TimestampFormat};
-use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, };
+use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, MetadataLayout,};
 
 const IRC_STACK_WIDTH: f64 = 400.0; // How wide should be required for it to no longer be stacked.
 const IRC_HEADER_WIDTH: f64 = 160.0; // How far should we push the text right to make it so they don't end up staggered.
@@ -22,6 +22,7 @@ impl SimpleColor {
 #[derive(Clone, druid::Data, druid::Lens)]
 pub struct LayoutSettings {
     pub item_layout: ItemLayoutOption,
+    pub metadata_layout: MetadataLayout,
     pub picture_shape: PictureShape,
     pub picture_size: f64,
     pub chat_bubble_tail_shape: TailShape,
@@ -75,6 +76,7 @@ impl LayoutSettings {
     pub fn default() -> LayoutSettings {
         LayoutSettings {
             item_layout: ItemLayoutOption::BubbleExternBottomMeta,
+            metadata_layout: MetadataLayout::LeftSideBySideWithDot,
             picture_shape: PictureShape::Circle,
             picture_size: 32.0,
             chat_bubble_tail_shape: TailShape::ConcaveBottom,
@@ -108,6 +110,7 @@ impl LayoutSettings {
         let datetime_color = env.get(crate::DATETIME_COLOR_KEY).as_rgba8();
         LayoutSettings {
             item_layout: num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index"),
+            metadata_layout: num_traits::FromPrimitive::from_u64(env.get(crate::METADATA_LAYOUT_KEY)).expect("Invalid layout index"),
             picture_shape: num_traits::FromPrimitive::from_u64(env.get(crate::PICTURE_SHAPE_KEY)).expect("Invalid picture shape index"),
             picture_size: env.get(crate::PICTURE_SIZE_KEY),
             chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid bubble tail shape index"),
@@ -138,6 +141,7 @@ impl LayoutSettings {
 
     pub fn set_env(&self, env: &mut druid::Env) {
         env.set(crate::ITEM_LAYOUT_KEY, self.item_layout as u64);
+        env.set(crate::METADATA_LAYOUT_KEY, self.metadata_layout as u64);
         env.set(crate::PICTURE_SHAPE_KEY, self.picture_shape as u64);
         env.set(crate::PICTURE_SIZE_KEY, self.picture_size as f64);
         env.set(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY, self.chat_bubble_tail_shape as u64);
@@ -238,8 +242,8 @@ impl LayoutSettings {
     }
 
     /// Returns true when the content will not be vertically stacked, but instead horizontally aligned.
-    pub fn is_side_by_side(&self, space_available: &BoxConstraints) -> bool {
-        self.item_layout == ItemLayoutOption::IRCStyle && space_available.max().width > IRC_STACK_WIDTH
+    pub fn is_side_by_side(&self, width_available: f64) -> bool {
+        self.item_layout == ItemLayoutOption::IRCStyle && width_available > IRC_STACK_WIDTH
     }
 
     /// The area that the content can take up.
@@ -248,9 +252,9 @@ impl LayoutSettings {
     /// the profile pic and the space between it and the content.
     /// 
     /// In side by side, it's the total width minus the width of the IRC header.
-    pub fn get_available_content_width(&self, space_available: &BoxConstraints, is_self_user: bool) -> f64 {
-        let mut width: f64 = space_available.max().width;
-        width -= if self.is_side_by_side(space_available) {
+    pub fn get_available_content_width(&self, width_available: f64, is_self_user: bool) -> f64 {
+        let mut width: f64 = width_available;
+        width -= if self.is_side_by_side(width_available) {
             IRC_HEADER_WIDTH
         } else {
             self.get_profile_pic_area_width(is_self_user)
@@ -269,21 +273,21 @@ impl LayoutSettings {
     /// 
     /// The min is set to zero space, and the max is the max height and
     /// the width is the width provided by [get_available_content_width()]
-    pub fn get_available_content_area(&self, space_available: &BoxConstraints, is_self_user: bool) -> BoxConstraints {
-        helper_functions::to_full_height_area(self.get_available_content_width(space_available, is_self_user), space_available)
+    pub fn get_available_content_area(&self, width_available: f64, is_self_user: bool) -> BoxConstraints {
+        helper_functions::to_full_height_area(self.get_available_content_width(width_available, is_self_user))
     }
 
     /// Returns the available bounding area for the content.
     /// 
     /// The min is set to zero space, and the max is the max height and
     /// the width is either the total width minus the left spacing, or the IRC width minus the picture size
-    pub fn get_sender_label_area(&self, space_available: &BoxConstraints) -> BoxConstraints {
-        let width = if self.is_side_by_side(space_available) {
+    pub fn get_sender_label_area(&self, width_available: f64) -> BoxConstraints {
+        let width = if self.is_side_by_side(width_available) {
             IRC_HEADER_WIDTH - self.picture_size
         } else {
-            space_available.max().width
+            width_available
         };
-        helper_functions::to_full_height_area(width, space_available)
+        helper_functions::to_full_height_area(width)
     }
 
     /// Gets the unpadded content x left position
@@ -292,7 +296,7 @@ impl LayoutSettings {
     /// 
     /// If left aligned, it is just pushed to the right of the profile pic and its padding.
     /// If right aligned, it subtracts the content size from the available space.
-    pub fn get_unpadded_content_x_left_position(&self, is_self_user: bool, space_available: &BoxConstraints,
+    pub fn get_unpadded_content_x_left_position(&self, is_self_user: bool, width_available: f64,
         actual_max_content_width: f64, total_metadata_width: f64) -> f64
     {
         if is_self_user && self.is_bubble() { // Only shift if using a bubble layout
@@ -305,7 +309,7 @@ impl LayoutSettings {
                 actual_max_content_width
             };
             // Offset so that the profile pic is pushed all the way to the right
-            space_available.max().width - required_width
+            width_available - required_width
                 - self.bubble_padding * 2.0 - self.get_profile_pic_area_width(is_self_user)
         } else {
             // Push to right of profile pic
@@ -315,11 +319,11 @@ impl LayoutSettings {
 
     /// Gets the origin position for the content, taking into account things including padding,
     /// layout, and the size of other items.
-    pub fn get_content_origin(&self, is_self_user: bool, space_available: &BoxConstraints, y_top_offset: f64,
+    pub fn get_content_origin(&self, is_self_user: bool, width_available: f64, y_top_offset: f64,
         widest_msg_content: f64, total_metadata_width: f64, metadata_height: f64) -> Point
     {
         let content_x_start = self.get_unpadded_content_x_left_position(
-            is_self_user, space_available, widest_msg_content, total_metadata_width
+            is_self_user, width_available, widest_msg_content, total_metadata_width
         ) + self.left_spacing;
         match self.item_layout {
             ItemLayoutOption::BubbleExternBottomMeta | ItemLayoutOption::BubbleInternalBottomMeta => {
@@ -339,7 +343,7 @@ impl LayoutSettings {
             ItemLayoutOption::IRCStyle => {
                 // Allow having msg and name on same axis if wide enough
                 // else stack them
-                if self.is_side_by_side(space_available) {
+                if self.is_side_by_side(width_available) {
                     // The msg content is to the right of the metadata
                     Point::new(IRC_HEADER_WIDTH, y_top_offset)
                 } else {
@@ -365,10 +369,12 @@ impl LayoutSettings {
 
     /// Gets the origin position for the sender, taking into account things including padding,
     /// layout, and the size of other items.
-    pub fn get_sender_origin(&self, is_self_user: bool, space_available: &BoxConstraints,
-        total_metadata_width: f64, total_msg_height: f64, widest_msg_width: f64, y_top_offset: f64) -> Point
+    pub fn get_sender_origin(&self, is_self_user: bool, width_available: f64,
+        sender_width: f64, datetime_width: f64, total_msg_height: f64, widest_msg_width: f64,
+        y_top_offset: f64) -> Point
     {
-        let msg_x_start = self.get_unpadded_content_x_left_position(is_self_user, space_available, 
+        let total_metadata_width = sender_width + datetime_width;
+        let msg_x_start = self.get_unpadded_content_x_left_position(is_self_user, width_available, 
             widest_msg_width, total_metadata_width);
         match self.item_layout {
             ItemLayoutOption::BubbleExternBottomMeta => {
@@ -393,17 +399,47 @@ impl LayoutSettings {
             },
             _ => {
                 // Non-bubble
-                Point::new(msg_x_start, 0.0)
+                if self.metadata_layout == MetadataLayout::LeftRightSpaced && self.is_side_by_side(width_available) {
+                    // Align to right of IRC content area
+                    Point::new(IRC_HEADER_WIDTH - sender_width - self.metadata_content_spacing, 0.0)
+                } else {
+                    // All the way to the left
+                    Point::new(msg_x_start, 0.0)
+                }
             }
+        }
+    }
+
+    /// Gets the origin of the datetime.
+    /// It goes alongside the sender label, depending on the layout
+    pub fn get_datetime_origin(&self, width_available: f64, widest_msg_width: f64, sender_label_origin: &Point,
+        sender_label_size: &Size, datetime_label_size: &Size) -> Point
+    {
+        let y_position = sender_label_origin.y + (sender_label_size.height - datetime_label_size.height) * 0.75;
+        let will_overflow = self.is_bubble() && sender_label_size.width + datetime_label_size.width > widest_msg_width;
+
+        if self.metadata_layout == MetadataLayout::LeftRightSpaced && !will_overflow {
+                // Position on the same height as the sender label, but right-aligned.
+                if self.is_bubble() {
+                    Point::new(widest_msg_width - datetime_label_size.width + sender_label_origin.x, y_position)
+                } else if self.is_side_by_side(width_available) {
+                    // Left align
+                    Point::new(0.0, y_position)
+                } else {
+                    Point::new(width_available - datetime_label_size.width, y_position)
+                }
+        } else {
+                // Position next to the sender such that the bottoms nearly align.
+                Point::new(sender_label_origin.x + sender_label_size.width, y_position)
         }
     }
 
     /// Gets the total height of a timeline item widget.
     /// Accounts for everything, including layout, content sizes, other label sizes, and padding.
-    pub fn get_total_height(&self, space_available: &BoxConstraints, sender_label_size: &Size,
+    pub fn get_total_height(&self, width_available: f64, sender_label_size: &Size,
         msg_label_size: &Size, y_top_offset: f64) -> f64
     {
-        if self.is_side_by_side(space_available) {
+        if self.is_side_by_side(width_available) {
             sender_label_size.height.max(msg_label_size.height) + y_top_offset
         } else {
             y_top_offset + msg_label_size.height + sender_label_size.height + self.metadata_content_spacing + if self.is_bubble() {
@@ -419,9 +455,11 @@ impl LayoutSettings {
     }
 
     /// Used to position the profile pic
-    pub fn profile_pic_x_offset(&self, is_self_user: bool, width_available: f64) -> f64 {
+    pub fn profile_pic_x_origin(&self, is_self_user: bool, width_available: f64, sender_label_size: Size) -> f64 {
         if is_self_user && self.is_bubble() {
             width_available - self.picture_size
+        } else if self.metadata_layout == MetadataLayout::LeftRightSpaced && self.is_side_by_side(width_available) {
+            return IRC_HEADER_WIDTH - sender_label_size.width - self.chat_bubble_picture_spacing - self.picture_size - self.metadata_content_spacing
         } else {
             0.0
         }
@@ -448,6 +486,7 @@ impl LayoutSettings {
         match layout {
             PredefinedLayout::ModernHangouts => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 32.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
@@ -476,6 +515,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::ModernBubble => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 32.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
@@ -504,6 +544,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::LargeBubble => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 37.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
@@ -532,6 +573,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::OldHangouts => {
                 self.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 35.0;
                 self.chat_bubble_tail_shape = TailShape::Straight;
@@ -560,6 +602,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::IMessage => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 32.0;
                 self.chat_bubble_tail_shape = TailShape::Fancy;
@@ -588,6 +631,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::Telegram => {
                 self.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
+                self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 32.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
@@ -616,6 +660,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::OldKik => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 30.0;
                 self.chat_bubble_tail_shape = TailShape::Symmetric;
@@ -644,6 +689,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::TearDrop => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 25.0;
                 self.chat_bubble_tail_shape = TailShape::Square;
@@ -672,6 +718,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::Tailless => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 25.0;
                 self.chat_bubble_tail_shape = TailShape::Hidden;
@@ -700,6 +747,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::OtherBubble => {
                 self.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 28.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
@@ -728,6 +776,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::Discord => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
+                self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 40.0;
                 self.chat_bubble_picture_spacing = 13.0;
@@ -750,6 +799,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::CompactDiscord => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
+                self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 36.0;
                 self.chat_bubble_picture_spacing = 8.0;
@@ -772,6 +822,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::Slack => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
+                self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::RoundedRectangle;
                 self.picture_size = 36.0;
                 self.chat_bubble_picture_spacing = 5.5;
@@ -794,6 +845,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::Compact => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
+                self.metadata_layout = MetadataLayout::LeftSideBySide;
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 25.0;
                 self.chat_bubble_picture_spacing = 2.5;
@@ -817,6 +869,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::IRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
+                self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 16.0;
                 self.chat_bubble_picture_spacing = 3.5;
@@ -840,6 +893,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::LargeIRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
+                self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 18.0;
                 self.chat_bubble_picture_spacing = 4.0;
@@ -863,6 +917,7 @@ impl LayoutSettings {
             },
             PredefinedLayout::SpacedIRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
+                self.metadata_layout = MetadataLayout::LeftRightSpaced;
                 self.picture_shape = PictureShape::Rectangle;
                 self.picture_size = 16.0;
                 self.chat_bubble_picture_spacing = 3.5;
