@@ -5,7 +5,7 @@ use druid::Point;
 use crate::{Message};
 use druid::piet::Color;
 use crate::LayoutSettings;
-use crate::helper::helper_functions;
+use crate::helper::helper_functions::{self, TimestampFormat};
 
 /// A widget that shows a single message
 /// 
@@ -25,12 +25,14 @@ impl SingleMessageWidget {
             .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
         );
         let timestamp_label = WidgetPod::new(
-            widget::Label::new(|item: &Message, _env: &_| {
+            widget::Label::new(|item: &Message, env: &Env| {
+                let time_format: TimestampFormat = num_traits::FromPrimitive::from_u64(
+                    env.get::<u64>(crate::SIDE_TIME_FORMAT_KEY)
+                ).expect("Invalid side time format index");
+
                 helper_functions::timestamp_to_display_msg(
                     item.timestamp_epoch_seconds,
-                    false,
-                    false,
-                    true
+                    time_format,
                 )
             })
             .with_line_break_mode(widget::LineBreaking::Overflow)
@@ -113,7 +115,7 @@ impl Widget<Message> for SingleMessageWidget {
         // Draw hot background (for when user's mouse is hovering over it)
         if ctx.is_hot() {
             ctx.fill(
-                self.msg_content_label.layout_rect().inflate(3.0, 3.0),
+                self.msg_content_label.layout_rect().inflate(1.5, 1.5),
                 &Color::rgba8(255, 255, 255, 20)
             );
         }

@@ -1,6 +1,6 @@
 use druid;
 use druid::{BoxConstraints, Size, Point};
-use super::helper_functions;
+use super::helper_functions::{self, TimestampFormat};
 use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, };
 
 const IRC_STACK_WIDTH: f64 = 400.0; // How wide should be required for it to no longer be stacked.
@@ -42,8 +42,8 @@ pub struct LayoutSettings {
     pub sender_font_size: f64,
     pub datetime_font_size: f64,
     pub metadata_font_bolded: bool,
-    pub relative_datetime: bool,
-    pub show_old_times_datetime: bool,
+    pub datetime_format: TimestampFormat,
+    pub side_time_format: TimestampFormat,
     pub sender_color: SimpleColor,
     pub datetime_color: SimpleColor,
     pub left_meta_offset: f64,
@@ -95,8 +95,8 @@ impl LayoutSettings {
             content_font_size: 13.0,
             sender_font_size: 11.0,
             datetime_font_size: 11.0,
-            relative_datetime: false,
-            show_old_times_datetime: false,
+            datetime_format: TimestampFormat::Compact12,
+            side_time_format: TimestampFormat::TimeOnly12,
             left_meta_offset: 2.0,
             sender_color: SimpleColor { r: 175, g: 175, b: 175 },
             datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
@@ -108,9 +108,9 @@ impl LayoutSettings {
         let datetime_color = env.get(crate::DATETIME_COLOR_KEY).as_rgba8();
         LayoutSettings {
             item_layout: num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index"),
-            picture_shape: num_traits::FromPrimitive::from_u64(env.get(crate::PICTURE_SHAPE_KEY)).expect("Invalid layout index"),
+            picture_shape: num_traits::FromPrimitive::from_u64(env.get(crate::PICTURE_SHAPE_KEY)).expect("Invalid picture shape index"),
             picture_size: env.get(crate::PICTURE_SIZE_KEY),
-            chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid layout index"),
+            chat_bubble_tail_shape: num_traits::FromPrimitive::from_u64(env.get(crate::CHAT_BUBBLE_TAIL_SHAPE_KEY)).expect("Invalid bubble tail shape index"),
             chat_bubble_tail_size: env.get(crate::CHAT_BUBBLE_TAIL_SIZE_KEY),
             chat_bubble_radius: env.get(crate::CHAT_BUBBLE_RADIUS_KEY),
             chat_bubble_picture_spacing: env.get(crate::CHAT_BUBBLE_IMG_SPACING_KEY),
@@ -128,8 +128,8 @@ impl LayoutSettings {
             sender_font_size: env.get(crate::SENDER_FONT_SIZE_KEY),
             datetime_font_size: env.get(crate::DATETIME_FONT_SIZE_KEY),
             metadata_font_bolded: env.get(crate::HEADER_FONT_BOLDED_KEY),
-            relative_datetime: env.get(crate::RELATIVE_DATETIME_KEY),
-            show_old_times_datetime: env.get(crate::SHOW_OLD_DATETIME_KEY),
+            datetime_format: num_traits::FromPrimitive::from_u64(env.get(crate::DATETIME_FORMAT_KEY)).expect("Invalid datetime format index"),
+            side_time_format: num_traits::FromPrimitive::from_u64(env.get(crate::SIDE_TIME_FORMAT_KEY)).expect("Invalid side time format index"),
             left_meta_offset: env.get(crate::LEFT_META_OFFSET),
             sender_color: SimpleColor { r: sender_color.0, g: sender_color.1, b: sender_color.2 },
             datetime_color: SimpleColor { r: datetime_color.0, g: datetime_color.1, b: datetime_color.2 },
@@ -158,8 +158,8 @@ impl LayoutSettings {
         env.set(crate::SENDER_FONT_SIZE_KEY, self.sender_font_size as f64);
         env.set(crate::DATETIME_FONT_SIZE_KEY, self.datetime_font_size as f64);
         env.set(crate::HEADER_FONT_BOLDED_KEY, self.metadata_font_bolded as bool);
-        env.set(crate::RELATIVE_DATETIME_KEY, self.relative_datetime as bool);
-        env.set(crate::SHOW_OLD_DATETIME_KEY, self.show_old_times_datetime as bool);
+        env.set(crate::DATETIME_FORMAT_KEY, self.datetime_format as u64);
+        env.set(crate::SIDE_TIME_FORMAT_KEY, self.side_time_format as u64);
         env.set(crate::LEFT_META_OFFSET, self.left_meta_offset);
         env.set(crate::SENDER_COLOR_KEY, self.sender_color.to_druid_color());
         env.set(crate::DATETIME_COLOR_KEY, self.datetime_color.to_druid_color());
@@ -468,8 +468,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -496,8 +496,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 3.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -505,7 +505,7 @@ impl LayoutSettings {
             PredefinedLayout::LargeBubble => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
                 self.picture_shape = PictureShape::Circle;
-                self.picture_size = 40.0;
+                self.picture_size = 37.0;
                 self.chat_bubble_tail_shape = TailShape::ConcaveBottom;
                 self.chat_bubble_tail_size = 7.0;
                 self.chat_bubble_radius = 8.0;
@@ -524,8 +524,8 @@ impl LayoutSettings {
                 self.content_font_size = 14.0;
                 self.sender_font_size = 12.0;
                 self.datetime_font_size = 12.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 3.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -552,8 +552,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 10.0;
                 self.datetime_font_size = 10.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 200, g: 200, b: 200 };
                 self.datetime_color = SimpleColor { r: 200, g: 200, b: 200 };
@@ -580,8 +580,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -608,8 +608,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 12.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -619,9 +619,9 @@ impl LayoutSettings {
                 self.picture_shape = PictureShape::Circle;
                 self.picture_size = 30.0;
                 self.chat_bubble_tail_shape = TailShape::Symmetric;
-                self.chat_bubble_tail_size = 5.5;
+                self.chat_bubble_tail_size = 5.0;
                 self.chat_bubble_radius = 4.0;
-                self.chat_bubble_picture_spacing = 7.0;
+                self.chat_bubble_picture_spacing = 10.0;
                 self.show_self_pic = false;
                 self.metadata_content_spacing = 1.0;
                 self.align_to_picture = true;
@@ -636,8 +636,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -664,8 +664,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -692,8 +692,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -720,8 +720,8 @@ impl LayoutSettings {
                 self.content_font_size = 14.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -742,9 +742,9 @@ impl LayoutSettings {
                 self.content_font_size = 14.0;
                 self.sender_font_size = 14.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = true;
-                self.show_old_times_datetime = true;
-                self.left_meta_offset = 15.0;
+                self.datetime_format = TimestampFormat::Full12;
+                self.side_time_format = TimestampFormat::TimeOnlyAmPm;
+                self.left_meta_offset = 4.5;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
             },
@@ -764,8 +764,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = true;
-                self.show_old_times_datetime = true;
+                self.datetime_format = TimestampFormat::Full12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 10.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -786,8 +786,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = true;
-                self.show_old_times_datetime = true;
+                self.datetime_format = TimestampFormat::Full12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 5.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -809,8 +809,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = true;
-                self.show_old_times_datetime = true;
+                self.datetime_format = TimestampFormat::Full12;
+                self.side_time_format = TimestampFormat::TimeOnly24;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -832,8 +832,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -846,7 +846,7 @@ impl LayoutSettings {
                 self.show_self_pic = true;
                 self.metadata_content_spacing = 3.0;
                 self.align_to_picture = false;
-                self.group_spacing = 7.0;
+                self.group_spacing = 13.0;
                 self.single_message_spacing = 6.0;
                 self.bubble_padding = 6.0;
                 self.show_left_line = true;
@@ -855,8 +855,8 @@ impl LayoutSettings {
                 self.content_font_size = 14.0;
                 self.sender_font_size = 14.0;
                 self.datetime_font_size = 12.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
@@ -878,8 +878,8 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 13.0;
                 self.datetime_font_size = 11.0;
-                self.relative_datetime = false;
-                self.show_old_times_datetime = false;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
                 self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
                 self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };

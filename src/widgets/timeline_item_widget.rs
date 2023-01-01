@@ -8,7 +8,6 @@ use druid;
 use crate::{MessageGroup, widgets::single_message_widget::SingleMessageWidget};
 use crate::LayoutSettings;
 use crate::helper::helper_functions;
-
 use num_derive;
 
 extern crate chrono;
@@ -162,9 +161,7 @@ impl TimelineItemWidget {
                 if item.messages.len() > 0 {
                     helper_functions::timestamp_to_display_msg(
                         item.messages[0].timestamp_epoch_seconds,
-                        env.get(crate::RELATIVE_DATETIME_KEY),
-                        env.get(crate::SHOW_OLD_DATETIME_KEY),
-                        false,
+                        num_traits::FromPrimitive::from_u64(env.get(crate::DATETIME_FORMAT_KEY)).expect("Invalid datetime format index"),
                     ).to_string()
                 } else {
                     "Invalid".to_string()

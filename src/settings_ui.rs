@@ -1,3 +1,4 @@
+use crate::helper::helper_functions::TimestampFormat;
 use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption};
 use druid::{EventCtx, Widget, WidgetExt};
 use druid::widget;
@@ -29,6 +30,20 @@ const LAYOUT_OPTIONS: [(&str, ItemLayoutOption); 5] =
     ("Bubble w/ top metadata", ItemLayoutOption::BubbleInternalTopMeta),
     ("Bubbleless", ItemLayoutOption::Bubbleless),
     ("IRC Style", ItemLayoutOption::IRCStyle),
+];
+const DATETIME_OPTIONS: [(&str, TimestampFormat); 4] =
+[
+    ("Full 12hr", TimestampFormat::Full12),
+    ("Full 24hr", TimestampFormat::Full24),
+    ("Compact 12hr", TimestampFormat::Compact12),
+    ("Compact 24hr", TimestampFormat::Compact24),
+];
+
+const TIME_OPTIONS: [(&str, TimestampFormat); 3] =
+[
+    ("12hr", TimestampFormat::TimeOnly12),
+    ("24hr", TimestampFormat::TimeOnly24),
+    ("12hr am/pm", TimestampFormat::TimeOnlyAmPm),
 ];
 
 pub(crate) fn build_settings_ui() -> impl Widget<AppState> {
@@ -218,32 +233,36 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
         .with_spacer(10.0)
-        .with_child(widget::Flex::row()
-            .with_flex_child(widget::Label::new("Relative time:").align_right()
-            , 0.7)
-            .with_default_spacer()
-            .with_flex_child(
-                widget::Switch::new()
-                .on_click( |ctx: &mut EventCtx, _, _ | {
-                    ui_changed_callback(ctx);
-                })
-                .lens(LayoutSettings::relative_datetime)
-            , 1.3)
-            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(
+                    widget::Label::new("Time Format:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::RadioGroup::column(DATETIME_OPTIONS)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
+                        .lens(LayoutSettings::datetime_format)
+                , 1.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
         .with_spacer(10.0)
-        .with_child(widget::Flex::row()
-            .with_flex_child(widget::Label::new("Show Old time:").align_right()
-            , 0.7)
-            .with_default_spacer()
-            .with_flex_child(
-                widget::Switch::new()
-                .on_click( |ctx: &mut EventCtx, _, _ | {
-                    ui_changed_callback(ctx);
-                })
-                .lens(LayoutSettings::show_old_times_datetime)
-            , 1.3)
-            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        .with_child(
+            widget::Flex::row()
+                .with_flex_child(
+                    widget::Label::new("Side Time Format:").align_right()
+                , 0.7)
+                .with_default_spacer()
+                .with_flex_child(
+                    widget::RadioGroup::column(TIME_OPTIONS)
+                        .on_click( |ctx: &mut EventCtx, _, _ | {
+                            ui_changed_callback(ctx);
+                        })
+                        .lens(LayoutSettings::side_time_format)
+                , 1.3)
+                .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
 }
 
