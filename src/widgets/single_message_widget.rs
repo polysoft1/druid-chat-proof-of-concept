@@ -2,7 +2,7 @@
 use druid::{Widget, widget, WidgetPod};
 use druid::widget::prelude::*;
 use crate::{Message};
-
+use druid::piet::{Color};
 
 /// A widget that shows a single message
 /// 
@@ -37,6 +37,13 @@ impl Widget<Message> for SingleMessageWidget {
         data: &Message,
         env: &Env,
     ) {
+        match event {
+            LifeCycle::HotChanged(_) => {
+                ctx.request_layout();
+                ctx.request_paint();
+            },
+            _ => {}
+        }
         self.msg_content_label.lifecycle(ctx, event, data, env);
     }
 
@@ -55,6 +62,14 @@ impl Widget<Message> for SingleMessageWidget {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
+        // Draw hot background (for when user's mouse is hovering over it)
+        if ctx.is_hot() {
+            ctx.fill(
+                self.msg_content_label.layout_rect().inflate(3.0, 3.0),
+                &Color::rgba8(255, 255, 255, 20)
+            );
+        }
+
         self.msg_content_label.paint(ctx, data, env);
     }
 }

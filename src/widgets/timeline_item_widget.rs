@@ -549,12 +549,6 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         data: &MessageGroup,
         env: &Env,
     ) {
-        match event {
-            LifeCycle::HotChanged(_) => {
-                ctx.request_paint();
-            },
-            _ => {}
-        }
         self.msg_content_labels.lifecycle(ctx, event, data, env);
         self.sender_name_label.lifecycle(ctx, event, data, env);
         self.datetime_label.lifecycle(ctx, event, data, env);
@@ -636,10 +630,6 @@ impl Widget<MessageGroup> for TimelineItemWidget {
     
         // First, do the calculations and variables
         self.draw_bubble_background(ctx, &settings, is_self_user);
-        // Draw hot background (for when user's mouse is hovering over it)
-        if ctx.is_hot() {
-            ctx.fill(self.msg_content_labels.layout_rect(), &Color::rgba8(255, 255, 255, 20));
-        }
 
         // Draw text
         self.msg_content_labels.paint(ctx, data, env);
