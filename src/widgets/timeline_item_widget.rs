@@ -1,4 +1,4 @@
-use druid::kurbo::{Circle, RoundedRect, Rect, BezPath};
+use druid::kurbo::{Circle, RoundedRect, BezPath};
 use druid::widget::prelude::*;
 use druid::{Widget, widget, WidgetExt};
 use druid::piet::{Color, kurbo};
@@ -7,6 +7,8 @@ use druid::Point;
 use druid;
 use crate::{MessageGroup, widgets::single_message_widget::SingleMessageWidget};
 use crate::LayoutSettings;
+use crate::helper::helper_functions;
+
 use num_derive;
 
 extern crate chrono;
@@ -324,7 +326,7 @@ impl LayoutSettings {
     /// 
     /// In side by side, it's the total width minus the width of the IRC header.
     fn get_available_content_width(&self, space_available: &BoxConstraints, is_self_user: bool) -> f64 {
-        let mut width: f64 = space_available.max().width - self.left_spacing;
+        let mut width: f64 = space_available.max().width;
         width -= if self.is_side_by_side(space_available) {
             IRC_HEADER_WIDTH
         } else {
@@ -341,7 +343,7 @@ impl LayoutSettings {
     /// The min is set to zero space, and the max is the max height and
     /// the width is the width provided by [get_available_content_width()]
     fn get_available_content_area(&self, space_available: &BoxConstraints, is_self_user: bool) -> BoxConstraints {
-        to_full_height_area(self.get_available_content_width(space_available, is_self_user), space_available)
+        helper_functions::to_full_height_area(self.get_available_content_width(space_available, is_self_user), space_available)
     }
 
     /// Returns the available bounding area for the content.
@@ -352,9 +354,9 @@ impl LayoutSettings {
         let width = if self.is_side_by_side(space_available) {
             IRC_HEADER_WIDTH - self.picture_size
         } else {
-            space_available.max().width - self.left_spacing
+            space_available.max().width
         };
-        to_full_height_area(width, space_available)
+        helper_functions::to_full_height_area(width, space_available)
     }
 
     /// Gets the unpadded content x left position
@@ -412,10 +414,10 @@ impl LayoutSettings {
                 // else stack them
                 if self.is_side_by_side(space_available) {
                     // The msg content is to the right of the metadata
-                    Point::new(self.left_spacing + IRC_HEADER_WIDTH, y_top_offset)
+                    Point::new(IRC_HEADER_WIDTH, y_top_offset)
                 } else {
                     // Stacked, with picture above instead of to side, since this is the most compact layout
-                    Point::new(self.left_spacing, metadata_height + self.metadata_content_spacing + y_top_offset)
+                    Point::new(0.0, metadata_height + self.metadata_content_spacing + y_top_offset)
                 }
             },
             _ => {
@@ -516,21 +518,12 @@ impl LayoutSettings {
     }
 }
 
-/// A convenience function to convert the width to a BoxConstraints that has the input width
-/// as the max width, and the maximum height.
-/// The minimum height and width are set to zero. 
-fn to_full_height_area(width: f64, space_available: &BoxConstraints) -> BoxConstraints {
-    BoxConstraints::new(
-        Size::new(0.0, 0.0),
-        Size::new(width, space_available.max().height)
-    )
-}
-
 impl Widget<MessageGroup> for TimelineItemWidget {
 
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut MessageGroup, env: &Env) {
         match event {
             Event::Command(cmd) if cmd.is(crate::REFRESH_UI_SELECTOR) => {
+                self.msg_content_labels.event(ctx, event, data, env);
                 ctx.request_layout();
                 ctx.request_paint();
             }
@@ -640,8 +633,6 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.draw_profile_pic(ctx, data, &settings, is_self_user);
         // Now the little arrow/tail that goes from the image to the bubble
         self.draw_bubble_tail(ctx, &settings, is_self_user);
-        // Now draw the line to left of content, if enabled
-        self.draw_left_line(ctx, &settings);
     }
 
 }
@@ -765,14 +756,5 @@ impl TimelineItemWidget {
                     druid::piet::InterpolationMode::Bilinear
             );
         });
-    }
-
-    fn draw_left_line(&self, ctx: &mut PaintCtx, settings: &LayoutSettings) {
-        if settings.show_left_line {
-            let content_label_rect = self.msg_content_labels.layout_rect();
-            let line_x0 = content_label_rect.x0 - settings.left_spacing;
-            let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 1.0, content_label_rect.y1);
-            ctx.fill(line_rect, &Color::GRAY);
-        }
     }
 }

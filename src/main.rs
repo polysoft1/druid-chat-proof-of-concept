@@ -10,6 +10,7 @@ use std::path::Path;
 use std::env;
 
 mod widgets;
+mod helper;
 use widgets::timeline_item_widget::{self, PictureShape, TailShape, ItemLayoutOption};
 
 // Env keys to define layout in the environment

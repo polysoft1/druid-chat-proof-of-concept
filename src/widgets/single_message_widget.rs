@@ -1,8 +1,11 @@
-
+use druid::kurbo::Rect;
 use druid::{Widget, widget, WidgetPod};
 use druid::widget::prelude::*;
+use druid::Point;
 use crate::{Message};
-use druid::piet::{Color};
+use druid::piet::Color;
+use crate::LayoutSettings;
+use crate::helper::helper_functions;
 
 /// A widget that shows a single message
 /// 
@@ -27,6 +30,13 @@ impl SingleMessageWidget {
 
 impl Widget<Message> for SingleMessageWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Message, env: &Env) {
+        match event {
+            Event::Command(cmd) if cmd.is(crate::REFRESH_UI_SELECTOR) => {
+                ctx.request_layout();
+                ctx.request_paint();
+            }
+            _ => {}
+        }
         self.msg_content_label.event(ctx, event, data, env);
     }
 
@@ -58,10 +68,16 @@ impl Widget<Message> for SingleMessageWidget {
         data: &Message,
         env: &Env,
     ) -> Size {
-        self.msg_content_label.layout(layout_ctx, bc, data, env)
+        let settings = LayoutSettings::from_env(env);
+        let msg_content_bc = helper_functions::to_full_height_area(bc.max().width - settings.left_spacing, bc);
+        let msg_content_origin = Point::new(settings.left_spacing, 0.0);
+        let layout = self.msg_content_label.layout(layout_ctx, &msg_content_bc, data, env);
+        self.msg_content_label.set_origin(layout_ctx, data, env, msg_content_origin);
+        layout
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
+        let settings = LayoutSettings::from_env(env);
         // Draw hot background (for when user's mouse is hovering over it)
         if ctx.is_hot() {
             ctx.fill(
@@ -71,5 +87,18 @@ impl Widget<Message> for SingleMessageWidget {
         }
 
         self.msg_content_label.paint(ctx, data, env);
+        self.draw_left_line(ctx, &settings);
+    }
+}
+
+impl SingleMessageWidget {
+    
+    fn draw_left_line(&self, ctx: &mut PaintCtx, settings: &LayoutSettings) {
+        if settings.show_left_line {
+            let content_label_rect = self.msg_content_label.layout_rect();
+            let line_x0 = content_label_rect.x0 - settings.left_spacing;
+            let line_rect = Rect::new(line_x0, content_label_rect.y0, line_x0 + 1.0, content_label_rect.y1);
+            ctx.fill(line_rect, &Color::GRAY);
+        }
     }
 }
