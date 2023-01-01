@@ -181,6 +181,44 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                         )
                         .cross_axis_alignment(widget::CrossAxisAlignment::Fill)
                     , 1.3)
+                .with_flex_child(
+                    widget::Flex::column()
+                        .with_child(widget::Flex::row()
+                        .with_flex_child(widget::Label::new("Content Font Size:").align_right()
+                        , 0.7)
+                        .with_default_spacer()
+                        .with_flex_child(
+                            widget::Stepper::new()
+                            .on_click( |ctx: &mut EventCtx, _, _ | {
+                                ui_changed_callback(ctx);
+                            })
+                            .lens(LayoutSettings::content_font_size)
+                        , 0.9)
+                        .with_flex_child(
+                            widget::Label::new(
+                                |data: &LayoutSettings, _: &_| {format!("{:.1}", data.content_font_size)})
+                        , 0.4)
+                        .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                        )
+                        .with_spacer(10.0)
+                        .with_child(widget::Flex::row()
+                            .with_flex_child(widget::Label::new("Sender Font Size:").align_right()
+                            , 0.7)
+                            .with_default_spacer()
+                            .with_flex_child(
+                                widget::Stepper::new()
+                                .on_click( |ctx: &mut EventCtx, _, _ | {
+                                    ui_changed_callback(ctx);
+                                })
+                                .lens(LayoutSettings::sender_font_size)
+                            , 0.9)
+                            .with_flex_child(
+                                widget::Label::new(
+                                    |data: &LayoutSettings, _: &_| {format!("{:.1}", data.sender_font_size)})
+                            , 0.4)
+                            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+                        )
+                    , 1.3)
                 .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
         .with_flex_child(widget::Label::new("The standard IRC layout changes when width > 400"), 1.0)
