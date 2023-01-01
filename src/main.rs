@@ -10,7 +10,7 @@ use std::path::Path;
 use std::env;
 
 mod widgets;
-use widgets::timeline_item::{self, PictureShape, TailShape, ItemLayoutOption};
+use widgets::timeline_item_widget::{self, PictureShape, TailShape, ItemLayoutOption};
 
 // Env keys to define layout in the environment
 pub const ITEM_LAYOUT_KEY: druid::env::Key<u64> = druid::env::Key::new("polysoft.druid-demo.item_layout");
@@ -726,7 +726,7 @@ fn build_chat_ui() -> impl Widget<AppState> {
 
     let timeline = widget::Scroll::new(
         widget::List::new( move || {
-            timeline_item::TimelineItemWidget::new()
+            timeline_item_widget::TimelineItemWidget::new()
         })
         .with_spacing(GROUP_SPACING_KEY)
         .padding(5.0)

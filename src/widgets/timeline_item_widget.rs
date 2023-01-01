@@ -5,7 +5,7 @@ use druid::piet::{Color, kurbo};
 use druid::WidgetPod;
 use druid::Point;
 use druid;
-use crate::{Message, MessageGroup};
+use crate::{MessageGroup, widgets::single_message_widget::SingleMessageWidget};
 use crate::LayoutSettings;
 use num_derive;
 
@@ -223,11 +223,7 @@ impl TimelineItemWidget {
             .with_line_break_mode(widget::LineBreaking::WordWrap)
         );
         let msg_content_labels_list = widget::List::new(|| {
-            widget::Label::new(|item: &Message, _env: &_| {
-                item.message.to_string()
-            })
-            .with_line_break_mode(widget::LineBreaking::WordWrap)
-            .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
+            SingleMessageWidget::new()
         }).with_spacing(crate::SINGLE_MESSAGE_SPACING_KEY);
         let msg_content_labels = WidgetPod::new(
             // Boxed is needed to make it so you don't get buried in type annotations.
