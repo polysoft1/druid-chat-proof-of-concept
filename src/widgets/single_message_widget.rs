@@ -12,6 +12,7 @@ use crate::helper::helper_functions;
 /// It also handles timestamps, the settings menu, reactions, and more.
 pub struct SingleMessageWidget {
     msg_content_label: WidgetPod<Message, widget::Label<Message>>,
+    timestamp_label: WidgetPod<Message, widget::Label<Message>>,
 }
 
 impl SingleMessageWidget {
@@ -23,8 +24,24 @@ impl SingleMessageWidget {
             .with_line_break_mode(widget::LineBreaking::WordWrap)
             .with_text_size(crate::CONTENT_FONT_SIZE_KEY)
         );
+        let timestamp_label = WidgetPod::new(
+            widget::Label::new(|item: &Message, _env: &_| {
+                helper_functions::timestamp_to_display_msg(
+                    item.timestamp_epoch_seconds,
+                    false,
+                    false,
+                    true
+                )
+            })
+            .with_line_break_mode(widget::LineBreaking::Overflow)
+            .with_text_size(crate::DATETIME_FONT_SIZE_KEY)
+            .with_text_color(crate::DATETIME_COLOR_KEY)
+        );
         
-        SingleMessageWidget { msg_content_label: msg_content_label }
+        SingleMessageWidget {
+            msg_content_label: msg_content_label,
+            timestamp_label: timestamp_label
+        }
     }
 }
 
@@ -38,6 +55,7 @@ impl Widget<Message> for SingleMessageWidget {
             _ => {}
         }
         self.msg_content_label.event(ctx, event, data, env);
+        self.timestamp_label.event(ctx, event, data, env);
     }
 
     fn lifecycle(
@@ -55,10 +73,12 @@ impl Widget<Message> for SingleMessageWidget {
             _ => {}
         }
         self.msg_content_label.lifecycle(ctx, event, data, env);
+        self.timestamp_label.lifecycle(ctx, event, data, env);
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Message, data: &Message, env: &Env) {
         self.msg_content_label.update(ctx, data, env);
+        self.timestamp_label.update(ctx, data, env);
     }
 
     fn layout(
@@ -69,11 +89,23 @@ impl Widget<Message> for SingleMessageWidget {
         env: &Env,
     ) -> Size {
         let settings = LayoutSettings::from_env(env);
-        let msg_content_bc = helper_functions::to_full_height_area(bc.max().width - settings.left_spacing, bc);
+        // Now position the content label
+        let msg_content_bc = helper_functions::to_full_height_area(
+            bc.max().width - settings.left_spacing,
+            bc
+        );
         let msg_content_origin = Point::new(settings.left_spacing, 0.0);
-        let layout = self.msg_content_label.layout(layout_ctx, &msg_content_bc, data, env);
+        let msg_size = self.msg_content_label.layout(layout_ctx, &msg_content_bc, data, env);
         self.msg_content_label.set_origin(layout_ctx, data, env, msg_content_origin);
-        layout
+        // Now position the timestamp label
+        let timestamp_size = self.timestamp_label.layout(layout_ctx, &bc, data, env);
+        let timestamp_y = msg_size.height - timestamp_size.height;
+        let mut timestamp_x = 0.0 - timestamp_size.width - settings.left_meta_offset - settings.left_spacing;
+        timestamp_x -= settings.bubble_padding;
+        let timestamp_origin = Point::new(timestamp_x, timestamp_y);
+        // Just using the given bc because we don't want it to wrap.
+        self.timestamp_label.set_origin(layout_ctx, data, env, timestamp_origin);
+        msg_size
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &Message, env: &Env) {
@@ -86,8 +118,17 @@ impl Widget<Message> for SingleMessageWidget {
             );
         }
 
-        self.msg_content_label.paint(ctx, data, env);
         self.draw_left_line(ctx, &settings);
+        self.msg_content_label.paint(ctx, data, env);
+        // Always paint because it's only when hot,
+        // and because it's out of bounds.
+        let is_below_profile_pic = self.msg_content_label.layout_rect().height()
+            - self.timestamp_label.layout_rect().height() - settings.picture_size > -10.0;
+        if (data.position_in_group > 0 || settings.left_bubble_flipped || is_below_profile_pic)
+            && ctx.is_hot()
+        {
+            self.timestamp_label.paint_always(ctx, data, env);
+        }
     }
 }
 

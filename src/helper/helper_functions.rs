@@ -21,7 +21,7 @@ pub fn timestamp_to_display_msg(epoch: i64, show_today_yesterday: bool, show_old
             let same_year = now.year() == local_msg_time.year();
             let day_diff = now.ordinal0() as i32 - local_msg_time.ordinal0() as i32;
             if time_only {
-                return local_msg_time.format("%l:%M %P").to_string();
+                return local_msg_time.format("%l:%M").to_string();
             }
             if same_year && day_diff <= 7
             {
