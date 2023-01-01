@@ -12,7 +12,6 @@ use crate::helper::helper_functions;
 use num_derive;
 
 extern crate chrono;
-use chrono::{ Datelike, TimeZone, Timelike};
 
 pub struct TimelineItemWidget {
     msg_content_labels: WidgetPod<MessageGroup, Box<dyn Widget<MessageGroup>>>,
@@ -150,58 +149,6 @@ fn make_octagon_path(start_x: f64, fraction_from_corner: f64, pic_width: f64) ->
     path
 }
 
-fn timestamp_to_display_msg(epoch: i64, compact: bool) -> String {
-    // Helpful reference: https://help.gnome.org/users/gthumb/stable/gthumb-date-formats.html.en
-    let now = chrono::offset::Local::now();
-
-    let local_time = chrono::Local.timestamp_opt(epoch, 0);
-    match local_time {
-        chrono::LocalResult::Single(local_msg_time) => {
-            let same_year = now.year() == local_msg_time.year();
-            let day_diff = now.ordinal0() as i32 - local_msg_time.ordinal0() as i32;
-            if same_year && day_diff <= 7
-            {
-                let mut result = String::new();
-
-                if day_diff == 0 {
-                    // Same day
-                    if !compact {
-                        result.push_str(" Today at");
-                    }
-                } else if day_diff == 1 {
-                    result.push_str(" Yesterday at");
-                } else {
-                    result.push(' ');
-                    result.push_str(local_msg_time.weekday().to_string().as_str());
-                    result.push_str(" at");
-                }
-                // Account for it adding a space before single-digit results
-                if local_msg_time.hour12().1 > 9 {
-                    result.push(' ');
-                }
-
-                result.push_str(local_msg_time.format("%l:%M %P").to_string().as_str());
-                return result;
-            } else {
-                // A while ago, so just display date
-                let mut result = String::new();
-                result.push(' ');
-                let format: &str;
-                if compact {
-                    format = "%D";
-                } else {
-                    format = "%D at %I:%M %P";
-                }
-                result.push_str(local_msg_time.format(format).to_string().as_str());
-                return result;
-            }
-        },
-        chrono::LocalResult::Ambiguous(_a, _b) => { return "Amiguous".to_string(); },
-        chrono::LocalResult::None => { return "Invalid Time".to_string(); },
-    }
-
-}
-
 impl TimelineItemWidget {
     pub fn new() -> Self {
         let sender_name_label = WidgetPod::new(
@@ -215,8 +162,12 @@ impl TimelineItemWidget {
         let datetime_label = WidgetPod::new(
             widget::Label::new(|item: &MessageGroup, env: &Env| {
                 if item.messages.len() > 0 {
-                    timestamp_to_display_msg(item.messages[0].timestamp_epoch_seconds,
-                        env.get(crate::COMPACT_DATETIME_KEY)).to_string()
+                    helper_functions::timestamp_to_display_msg(
+                        item.messages[0].timestamp_epoch_seconds,
+                        env.get(crate::RELATIVE_DATETIME_KEY),
+                        env.get(crate::SHOW_OLD_DATETIME_KEY),
+                        false,
+                    ).to_string()
                 } else {
                     "Invalid".to_string()
                 }

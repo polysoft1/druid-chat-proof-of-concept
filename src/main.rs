@@ -36,7 +36,8 @@ pub const SENDER_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("pol
 pub const CONTENT_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.content_font_size");
 pub const DATETIME_FONT_SIZE_KEY: druid::env::Key<f64> = druid::env::Key::new("polysoft.druid-demo.datetime_font_size");
 pub const HEADER_FONT_BOLDED_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.metadata_font_bolded");
-pub const COMPACT_DATETIME_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.compact_datetime");
+pub const RELATIVE_DATETIME_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.relative_datetime");
+pub const SHOW_OLD_DATETIME_KEY: druid::env::Key<bool> = druid::env::Key::new("polysoft.druid-demo.show_old_datetime");
 pub const SENDER_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.sender_color");
 pub const DATETIME_COLOR_KEY: druid::env::Key<druid::Color> = druid::env::Key::new("polysoft.druid-demo.datetime_color");
 // Commands to communicate things that need to happen
@@ -75,7 +76,8 @@ struct LayoutSettings {
     sender_font_size: f64,
     datetime_font_size: f64,
     metadata_font_bolded: bool,
-    compact_datetime: bool,
+    relative_datetime: bool,
+    show_old_times_datetime: bool,
     sender_color: SimpleColor,
     datetime_color: SimpleColor,
 }
@@ -106,7 +108,8 @@ impl LayoutSettings {
             sender_font_size: env.get(SENDER_FONT_SIZE_KEY),
             datetime_font_size: env.get(DATETIME_FONT_SIZE_KEY),
             metadata_font_bolded: env.get(HEADER_FONT_BOLDED_KEY),
-            compact_datetime: env.get(COMPACT_DATETIME_KEY),
+            relative_datetime: env.get(RELATIVE_DATETIME_KEY),
+            show_old_times_datetime: env.get(SHOW_OLD_DATETIME_KEY),
             sender_color: SimpleColor { r: sender_color.0, g: sender_color.1, b: sender_color.2 },
             datetime_color: SimpleColor { r: datetime_color.0, g: datetime_color.1, b: datetime_color.2 },
         }
@@ -134,7 +137,8 @@ impl LayoutSettings {
         env.set(SENDER_FONT_SIZE_KEY, self.sender_font_size as f64);
         env.set(DATETIME_FONT_SIZE_KEY, self.datetime_font_size as f64);
         env.set(HEADER_FONT_BOLDED_KEY, self.metadata_font_bolded as bool);
-        env.set(COMPACT_DATETIME_KEY, self.compact_datetime as bool);
+        env.set(RELATIVE_DATETIME_KEY, self.relative_datetime as bool);
+        env.set(SHOW_OLD_DATETIME_KEY, self.show_old_times_datetime as bool);
         env.set(SENDER_COLOR_KEY, self.sender_color.to_druid_color());
         env.set(DATETIME_COLOR_KEY, self.datetime_color.to_druid_color());
     }
@@ -283,7 +287,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -309,7 +314,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -335,7 +341,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 12.0;
             settings.datetime_font_size = 12.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -361,7 +368,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 10.0;
             settings.datetime_font_size = 10.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 200, g: 200, b: 200 };
             settings.datetime_color = SimpleColor { r: 200, g: 200, b: 200 };
         },
@@ -387,7 +395,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -413,7 +422,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 12.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -439,7 +449,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -465,7 +476,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -491,7 +503,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 11.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -517,7 +530,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -537,7 +551,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 14.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = false;
+            settings.relative_datetime = true;
+            settings.show_old_times_datetime = true;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -557,7 +572,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = false;
+            settings.relative_datetime = true;
+            settings.show_old_times_datetime = true;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -577,7 +593,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = false;
+            settings.relative_datetime = true;
+            settings.show_old_times_datetime = true;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -598,7 +615,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = true;
+            settings.show_old_times_datetime = true;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -619,7 +637,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -640,7 +659,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 14.0;
             settings.sender_font_size = 14.0;
             settings.datetime_font_size = 12.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -661,7 +681,8 @@ fn predefined_layout_selected(ctx: &mut EventCtx, layout: PredefiendLayout, sett
             settings.content_font_size = 13.0;
             settings.sender_font_size = 13.0;
             settings.datetime_font_size = 11.0;
-            settings.compact_datetime = true;
+            settings.relative_datetime = false;
+            settings.show_old_times_datetime = false;
             settings.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
             settings.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
         },
@@ -992,7 +1013,7 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
         )
         .with_spacer(10.0)
         .with_child(widget::Flex::row()
-            .with_flex_child(widget::Label::new("Compact Datetime:").align_right()
+            .with_flex_child(widget::Label::new("Relative time:").align_right()
             , 0.7)
             .with_default_spacer()
             .with_flex_child(
@@ -1000,7 +1021,21 @@ fn build_advanced_layout_settings() -> impl Widget<LayoutSettings> {
                 .on_click( |ctx: &mut EventCtx, _, _ | {
                     ui_changed_callback(ctx);
                 })
-                .lens(LayoutSettings::compact_datetime)
+                .lens(LayoutSettings::relative_datetime)
+            , 1.3)
+            .cross_axis_alignment(widget::CrossAxisAlignment::Start)
+        )
+        .with_spacer(10.0)
+        .with_child(widget::Flex::row()
+            .with_flex_child(widget::Label::new("Show Old time:").align_right()
+            , 0.7)
+            .with_default_spacer()
+            .with_flex_child(
+                widget::Switch::new()
+                .on_click( |ctx: &mut EventCtx, _, _ | {
+                    ui_changed_callback(ctx);
+                })
+                .lens(LayoutSettings::show_old_times_datetime)
             , 1.3)
             .cross_axis_alignment(widget::CrossAxisAlignment::Start)
         )
@@ -1472,7 +1507,8 @@ fn main() -> Result<(), PlatformError> {
             sender_font_size: 11.0,
             datetime_font_size: 11.0,
             metadata_font_bolded: false,
-            compact_datetime: true,
+            relative_datetime: false,
+            show_old_times_datetime: false,
             sender_color: SimpleColor { r: 175, g: 175, b: 175 },
             datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
         }
