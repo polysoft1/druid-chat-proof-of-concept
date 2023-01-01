@@ -575,15 +575,15 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         // First, do the calculations and variables
         self.draw_bubble_background(ctx, &settings, is_self_user);
 
-        // Draw text
-        self.msg_content_labels.paint(ctx, data, env);
-        self.sender_name_label.paint(ctx, data, env);
-        self.datetime_label.paint(ctx, data, env);
-
         // Next, the profile pic
         self.draw_profile_pic(ctx, data, &settings, is_self_user);
         // Now the little arrow/tail that goes from the image to the bubble
         self.draw_bubble_tail(ctx, &settings, is_self_user);
+
+        // Draw text
+        self.msg_content_labels.paint(ctx, data, env);
+        self.sender_name_label.paint(ctx, data, env);
+        self.datetime_label.paint(ctx, data, env);
     }
 
 }
