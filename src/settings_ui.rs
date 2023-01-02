@@ -128,6 +128,12 @@ fn build_predefined_styles_settings() -> impl Widget<LayoutSettings> {
                                 })
                         )
                         .with_child(
+                            widget::Button::new("Relaxed")
+                                .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
+                                    predefined_layout_selected(ctx, PredefinedLayout::Relaxed, data);
+                                })
+                        )
+                        .with_child(
                             widget::Button::new("Other Bubble")
                                 .on_click( |ctx: &mut EventCtx, data: &mut LayoutSettings, _ | {
                                     predefined_layout_selected(ctx, PredefinedLayout::OtherBubble, data);

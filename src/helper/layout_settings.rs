@@ -95,6 +95,7 @@ pub enum PredefinedLayout {
     OldKik,
     TearDrop,
     Tailless,
+    Relaxed,
     OtherBubble,
     Slack,
     Discord,
@@ -825,6 +826,38 @@ impl LayoutSettings {
                 self.content_font_size = 13.0;
                 self.sender_font_size = 11.0;
                 self.datetime_font_size = 11.0;
+                self.datetime_format = TimestampFormat::Compact12;
+                self.side_time_format = TimestampFormat::TimeOnly12;
+                self.left_meta_offset = 2.0;
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
+            },
+
+            PredefinedLayout::Relaxed => {
+                self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
+                self.metadata_layout = MetadataLayout::LeftSideBySideWithDot;
+                self.picture_shape = PictureShape::Circle;
+                self.picture_size = 35.0;
+                self.chat_bubble_tail_shape = TailShape::Fancy;
+                self.chat_bubble_tail_size = 8.0;
+                self.chat_bubble_radius = 8.0;
+                self.chat_picture_spacing = 6.5;
+                self.show_self_pic = true;
+                self.metadata_content_spacing = 3.0;
+                self.align_to_picture = true;
+                self.bubble_padding = 7.0;
+                self.group_spacing = 9.5;
+                self.single_message_spacing = 9.0;
+                self.show_left_line = false;
+                self.left_spacing = 0.0;
+                self.left_bubble_flipped = true;
+                self.right_bubble_flipped = true;
+                self.metadata_font_bolded = false;
+                self.content_font_size = 13.0;
+                self.sender_font_size = 10.0;
+                self.datetime_font_size = 10.0;
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
