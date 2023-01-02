@@ -97,7 +97,7 @@ impl Widget<Message> for SingleMessageWidget {
         );
         let msg_content_origin = Point::new(settings.left_spacing, 0.0);
         let msg_size = self.msg_content_label.layout(layout_ctx, &msg_content_bc, data, env);
-        self.msg_content_label.set_origin(layout_ctx, data, env, msg_content_origin);
+        self.msg_content_label.set_origin(layout_ctx, msg_content_origin);
         // Now position the timestamp label
         let timestamp_size = self.timestamp_label.layout(layout_ctx, &bc, data, env);
         let timestamp_y = msg_size.height - timestamp_size.height;
@@ -105,7 +105,7 @@ impl Widget<Message> for SingleMessageWidget {
         timestamp_x -= settings.bubble_padding;
         let timestamp_origin = Point::new(timestamp_x, timestamp_y);
         // Just using the given bc because we don't want it to wrap.
-        self.timestamp_label.set_origin(layout_ctx, data, env, timestamp_origin);
+        self.timestamp_label.set_origin(layout_ctx, timestamp_origin);
         msg_size
     }
 

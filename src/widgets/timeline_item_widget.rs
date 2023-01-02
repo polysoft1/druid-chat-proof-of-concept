@@ -271,7 +271,7 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         // messages cause the tail to not align with the picture properly
         let y_top_offset = settings.get_top_y_offset(is_self_user, &sender_label_size, &msg_label_list_size);
 
-        self.msg_content_labels.set_origin(layout_ctx, data, env,
+        self.msg_content_labels.set_origin(layout_ctx,
             settings.get_content_origin(
                 is_self_user,
                 width_available,
@@ -296,8 +296,8 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         let datetime_label_origin = settings.get_datetime_origin(width_available, msg_label_list_size.width,
             &sender_label_origin, &sender_label_size, &datetime_label_size);
         
-        self.sender_name_label.set_origin(layout_ctx, data, env, sender_label_origin);
-        self.datetime_label.set_origin(layout_ctx, data, env, datetime_label_origin);
+        self.sender_name_label.set_origin(layout_ctx, sender_label_origin);
+        self.datetime_label.set_origin(layout_ctx, datetime_label_origin);
 
         // The image is at the top left if other, or top right if self (if shown)
         // Potential future support for bottom images
