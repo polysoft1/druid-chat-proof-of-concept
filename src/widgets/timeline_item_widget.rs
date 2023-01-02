@@ -20,6 +20,9 @@ pub struct TimelineItemWidget {
 
 const OTHER_MSG_COLOR: Color = Color::rgb8(74, 74, 76);
 const SELF_MSG_COLOR: Color = Color::rgb8(12, 131, 242);
+const DOT_SIZE: f64 = 1.5;
+const DOT_X_OFFSET: f64 = -0.9;
+const DOT_Y_OFFSET: f64 = 1.0;
 
 #[derive(Clone, Copy, PartialEq, Data, num_derive::FromPrimitive)]
 pub enum PictureShape {
@@ -242,8 +245,8 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.datetime_label.widget_mut().set_font(settings.get_metadata_font_descriptor());
         self.sender_name_label.widget_mut().set_text_size(crate::SENDER_FONT_SIZE_KEY);
         self.datetime_label.widget_mut().set_text_size(crate::DATETIME_FONT_SIZE_KEY);
-        self.sender_name_label.widget_mut().set_text_color(crate::SENDER_COLOR_KEY);
-        self.datetime_label.widget_mut().set_text_color(crate::DATETIME_COLOR_KEY);
+        self.sender_name_label.widget_mut().set_text_color(settings.get_sender_color(is_self_user));
+        self.datetime_label.widget_mut().set_text_color(settings.get_datetime_color(is_self_user));
 
         let width_available = bc.max().width;
 
@@ -317,6 +320,12 @@ impl Widget<MessageGroup> for TimelineItemWidget {
         self.msg_content_labels.paint(ctx, data, env);
         self.sender_name_label.paint(ctx, data, env);
         self.datetime_label.paint(ctx, data, env);
+        if settings.metadata_layout == MetadataLayout::LeftSideBySideWithDot {
+            let datetime_position = self.datetime_label.layout_rect();
+            let dot_location = druid::Point::new(datetime_position.x0 + DOT_X_OFFSET, (datetime_position.y0 + datetime_position.y1) / 2.0 + DOT_Y_OFFSET);
+            let dot_color = settings.get_datetime_color(is_self_user);
+            ctx.fill(druid::kurbo::Circle::new(dot_location, DOT_SIZE), &dot_color);
+        }
     }
 
 }

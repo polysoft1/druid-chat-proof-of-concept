@@ -3,6 +3,13 @@ use druid::{BoxConstraints, Size, Point};
 use super::helper_functions::{self, TimestampFormat};
 use crate::widgets::timeline_item_widget::{PictureShape, TailShape, ItemLayoutOption, MetadataLayout,};
 
+const DOT_SPACING: f64 = 5.0;
+
+const DARK_ON_DARK_COLOR: SimpleColor = SimpleColor { r: 175, g: 175, b: 175 };
+const DARK_ON_MEDIUM_COLOR: SimpleColor = SimpleColor { r: 200, g: 200, b: 200 };
+const DARK_ON_BLUE_COLOR: SimpleColor = SimpleColor { r: 210, g: 230, b: 255 };
+const WHITE_COLOR: SimpleColor = SimpleColor { r: 255, g: 255, b: 255 };
+
 #[derive(Clone, druid::Data, druid::Lens)]
 pub struct SimpleColor {
     r: u8,
@@ -65,6 +72,9 @@ pub struct LayoutSettings {
     pub side_time_format: TimestampFormat,
     pub sender_color: SimpleColor,
     pub datetime_color: SimpleColor,
+    /// For when the self bubble's color messes with the visibility of the text
+    pub self_sender_color: SimpleColor,
+    pub self_datetime_color: SimpleColor,
     /// How far to move the left meta (time) to left of message
     pub left_meta_offset: f64,
     /// How wide should be required for it to no longer be stacked.
@@ -127,12 +137,16 @@ impl LayoutSettings {
             irc_header_width: 160.0,
             sender_color: SimpleColor { r: 175, g: 175, b: 175 },
             datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
+            self_sender_color: SimpleColor { r: 175, g: 175, b: 175 },
+            self_datetime_color: SimpleColor { r: 175, g: 175, b: 175 },
         }
     }
 
     pub fn from_env(env: &druid::Env) -> LayoutSettings{
         let sender_color = env.get(crate::SENDER_COLOR_KEY).as_rgba8();
         let datetime_color = env.get(crate::DATETIME_COLOR_KEY).as_rgba8();
+        let self_datetime_color = env.get(crate::SELF_DATETIME_COLOR_KEY).as_rgba8();
+        let self_sender_color = env.get(crate::SELF_SENDER_COLOR_KEY).as_rgba8();
         LayoutSettings {
             item_layout: num_traits::FromPrimitive::from_u64(env.get(crate::ITEM_LAYOUT_KEY)).expect("Invalid layout index"),
             metadata_layout: num_traits::FromPrimitive::from_u64(env.get(crate::METADATA_LAYOUT_KEY)).expect("Invalid layout index"),
@@ -163,6 +177,8 @@ impl LayoutSettings {
             irc_header_width: env.get(crate::IRC_HEADER_WIDTH_KEY),
             sender_color: SimpleColor { r: sender_color.0, g: sender_color.1, b: sender_color.2 },
             datetime_color: SimpleColor { r: datetime_color.0, g: datetime_color.1, b: datetime_color.2 },
+            self_datetime_color: SimpleColor { r: self_datetime_color.0, g: self_datetime_color.1, b: self_datetime_color.2 },
+            self_sender_color: SimpleColor { r: self_sender_color.0, g: self_sender_color.1, b: self_sender_color.2 },
         }
     }
 
@@ -196,6 +212,8 @@ impl LayoutSettings {
         env.set(crate::IRC_HEADER_WIDTH_KEY, self.irc_header_width);
         env.set(crate::SENDER_COLOR_KEY, self.sender_color.to_druid_color());
         env.set(crate::DATETIME_COLOR_KEY, self.datetime_color.to_druid_color());
+        env.set(crate::SELF_DATETIME_COLOR_KEY, self.self_datetime_color.to_druid_color());
+        env.set(crate::SELF_SENDER_COLOR_KEY, self.self_sender_color.to_druid_color());
     }
 
     /// Gets the font for the title
@@ -459,7 +477,13 @@ impl LayoutSettings {
                 }
         } else {
                 // Position next to the sender such that the bottoms nearly align.
-                Point::new(sender_label_origin.x + sender_label_size.width, y_position)
+                if self.metadata_layout == MetadataLayout::LeftSideBySideWithDot {
+                    // Add room for dot
+                    Point::new(sender_label_origin.x + sender_label_size.width + DOT_SPACING, y_position)
+                } else {
+                    // No dot
+                    Point::new(sender_label_origin.x + sender_label_size.width, y_position)
+                }
         }
     }
 
@@ -511,6 +535,23 @@ impl LayoutSettings {
         }
     }
 
+    pub fn get_datetime_color(&self, is_self_user: bool) -> druid::Color {
+        if is_self_user {
+            self.self_datetime_color.to_druid_color()
+        } else {
+            self.datetime_color.to_druid_color()
+        }
+    }
+
+    // Note: In the future, this could be determined by the server's preferences
+    pub fn get_sender_color(&self, is_self_user: bool) -> druid::Color {
+        if is_self_user {
+            self.self_sender_color.to_druid_color()
+        } else {
+            self.sender_color.to_druid_color()
+        }
+    }
+
     pub fn set_from_predefined_layout(&mut self, layout: PredefinedLayout) {
         match layout {
             PredefinedLayout::ModernHangouts => {
@@ -539,8 +580,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::ModernBubble => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -568,8 +611,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 3.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::LargeBubble => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -597,8 +642,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 3.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::OldHangouts => {
                 self.item_layout = ItemLayoutOption::BubbleInternalBottomMeta;
@@ -626,8 +673,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 200, g: 200, b: 200 };
-                self.datetime_color = SimpleColor { r: 200, g: 200, b: 200 };
+                self.sender_color = DARK_ON_MEDIUM_COLOR;
+                self.datetime_color = DARK_ON_MEDIUM_COLOR;
+                self.self_datetime_color = DARK_ON_BLUE_COLOR;
+                self.self_sender_color = DARK_ON_BLUE_COLOR;
             },
             PredefinedLayout::IMessage => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -655,8 +704,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::Telegram => {
                 self.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -684,8 +735,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_BLUE_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::OldKik => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -713,8 +766,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::TearDrop => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -742,8 +797,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::Tailless => {
                 self.item_layout = ItemLayoutOption::BubbleExternBottomMeta;
@@ -771,8 +828,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 175, g: 175, b: 175 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = DARK_ON_DARK_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = DARK_ON_DARK_COLOR;
             },
             PredefinedLayout::OtherBubble => {
                 self.item_layout = ItemLayoutOption::BubbleInternalTopMeta;
@@ -800,8 +859,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::Discord => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
@@ -823,8 +884,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Full12;
                 self.side_time_format = TimestampFormat::TimeOnlyAmPm;
                 self.left_meta_offset = 4.5;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::CompactDiscord => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
@@ -846,8 +909,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Full12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 10.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::Slack => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
@@ -869,8 +934,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Full12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 5.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::Compact => {
                 self.item_layout = ItemLayoutOption::Bubbleless;
@@ -893,8 +960,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Full12;
                 self.side_time_format = TimestampFormat::TimeOnly24;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::IRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
@@ -917,8 +986,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::LargeIRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
@@ -941,8 +1012,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
             PredefinedLayout::SpacedIRC => {
                 self.item_layout = ItemLayoutOption::IRCStyle;
@@ -965,8 +1038,10 @@ impl LayoutSettings {
                 self.datetime_format = TimestampFormat::Compact12;
                 self.side_time_format = TimestampFormat::TimeOnly12;
                 self.left_meta_offset = 2.0;
-                self.sender_color = SimpleColor { r: 255, g: 255, b: 255 };
-                self.datetime_color = SimpleColor { r: 175, g: 175, b: 175 };
+                self.sender_color = WHITE_COLOR;
+                self.datetime_color = DARK_ON_DARK_COLOR;
+                self.self_datetime_color = DARK_ON_DARK_COLOR;
+                self.self_sender_color = WHITE_COLOR;
             },
         }
     }
