@@ -106,7 +106,7 @@ impl Widget<AppState> for ChatWindowWidget {
         match event {
             Event::WindowConnected => {
                 // Start the timer when the application launches
-                self.location_timer_token = ctx.request_timer(LOCATION_CHECK_TIMER_INTERVAL);
+                //self.location_timer_token = ctx.request_timer(LOCATION_CHECK_TIMER_INTERVAL);
             }
             Event::Timer(id) => {
                 if *id == self.location_timer_token {
